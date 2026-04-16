@@ -24,6 +24,6 @@ instance Show Token where
   show Dot        = "DOT . null"
   show Comma      = "COMMA , null"
   show Plus       = "PLUS + null"
-  show Minus      = "Minus - null"
-  show Slash      = "Minus / null"
+  show Minus      = "MINUS - null"
+  show Slash      = "SLASH / null"
   show EOF        = "EOF  null"
