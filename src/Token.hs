@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module Token where
 
 import Data.Maybe (maybe)
@@ -19,6 +20,7 @@ data Token =
   | Semicolon
   | EOF
 instance Show Token where
+  show :: Token -> String
   show LeftParen  = "LEFT_PAREN ( null"
   show RightParen = "RIGHT_PAREN ) null"
   show LeftBrace  = "LEFT_BRACE { null"
@@ -31,5 +33,5 @@ instance Show Token where
   show Slash      = "SLASH / null"
   show Semicolon  = "SEMICOLON ; null"
   show Equal      = "EQUAL = null"
-  show EqualEqual = "EQUALEQUAL == null"
+  show EqualEqual = "EQUAL_EQUAL == null"
   show EOF        = "EOF  null"
