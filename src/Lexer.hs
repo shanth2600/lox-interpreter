@@ -24,17 +24,19 @@ type Parser = Parsec String ()
 
 token' :: Parser LexResult
 token' =
-  (char '(' >> pure (LexToken LeftParen)) <|>
-  (char ')' >> pure (LexToken RightParen)) <|>
-  (char '{' >> pure (LexToken LeftBrace)) <|>
-  (char '}' >> pure (LexToken RightBrace)) <|>
-  (char '*' >> pure (LexToken Star)) <|>
-  (char '.' >> pure (LexToken Dot)) <|>
-  (char ',' >> pure (LexToken Comma)) <|>
-  (char '+' >> pure (LexToken Plus)) <|>
-  (char '-' >> pure (LexToken Minus)) <|>
-  (char ';' >> pure (LexToken Semicolon)) <|>
-  (char '/' >> pure (LexToken Slash)) <|>
+  (string "(" >> pure (LexToken LeftParen)) <|>
+  (string ")" >> pure (LexToken RightParen)) <|>
+  (string "{" >> pure (LexToken LeftBrace)) <|>
+  (string "}" >> pure (LexToken RightBrace)) <|>
+  (string "*" >> pure (LexToken Star)) <|>
+  (string "." >> pure (LexToken Dot)) <|>
+  (string "," >> pure (LexToken Comma)) <|>
+  (string "+" >> pure (LexToken Plus)) <|>
+  (string "-" >> pure (LexToken Minus)) <|>
+  (string ";" >> pure (LexToken Semicolon)) <|>
+  (string "/" >> pure (LexToken Slash)) <|>
+  (string "=" >> pure (LexToken Equal)) <|>
+  (string "==" >> pure (LexToken EqualEqual)) <|>
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
 

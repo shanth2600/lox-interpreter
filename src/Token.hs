@@ -14,6 +14,8 @@ data Token =
   | Plus
   | Minus
   | Slash
+  | Equal
+  | EqualEqual
   | Semicolon
   | EOF
 instance Show Token where
@@ -28,4 +30,6 @@ instance Show Token where
   show Minus      = "MINUS - null"
   show Slash      = "SLASH / null"
   show Semicolon  = "SEMICOLON ; null"
+  show Equal      = "EQUAL = null"
+  show EqualEqual = "EQUALEQUAL == null"
   show EOF        = "EOF  null"
