@@ -1,31 +1,64 @@
-module Lexer (Token (..), tokenize) where
+{-# LANGUAGE DerivingVia #-}
+module Lexer (LexResult (..), Token (..), tokenize) where
 
 import Text.Parsec
 import Token
 import System.Exit (die)
 import Data.Either (fromRight)
-import Data.Functor (($>))
+import Data.Functor (($>), (<&>))
+import Text.Parsec.Error (Message(UnExpect), errorMessages)
+import Text.Printf (printf)
+
+type LineNumber = Int
+
+
+
+data LexResult = LexToken Token | LexError Char LineNumber
+
+instance Show LexResult where
+  show (LexToken tkn) = show tkn
+  show (LexError c ln) = printf "[line %d] Error: Unexpected character: %s" ln c
+
 
 type Parser = Parsec String ()
 
-token' :: Parser Token
+token' :: Parser LexResult
 token' =
-  (char '(' >> pure LeftParen) <|>
-  (char ')' >> pure RightParen) <|>
-  (char '{' >> pure LeftBrace) <|>
-  (char '}' >> pure RightBrace) <|>
-  (char '*' >> pure Star) <|>
-  (char '.' >> pure Dot) <|>
-  (char ',' >> pure Comma) <|>
-  (char '+' >> pure Plus) <|>
-  (char '-' >> pure Minus) <|>
-  (char ';' >> pure Semicolon) <|>
-  (char '/' >> pure Slash) 
+  (char '(' >> pure (LexToken LeftParen)) <|>
+  (char ')' >> pure (LexToken RightParen)) <|>
+  (char '{' >> pure (LexToken LeftBrace)) <|>
+  (char '}' >> pure (LexToken RightBrace)) <|>
+  (char '*' >> pure (LexToken Star)) <|>
+  (char '.' >> pure (LexToken Dot)) <|>
+  (char ',' >> pure (LexToken Comma)) <|>
+  (char '+' >> pure (LexToken Plus)) <|>
+  (char '-' >> pure (LexToken Minus)) <|>
+  (char ';' >> pure (LexToken Semicolon)) <|>
+  (char '/' >> pure (LexToken Slash)) <|>
+  (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
 
-tokens' :: Parser [Token]  
-tokens' = (many1 token') <> (eof $> [EOF])
+tokens' :: Parser [LexResult]  
+tokens' = (many1 token') <> (eof $> [LexToken EOF])
 
-tokenize :: String -> [Token]
+tokenize :: String -> IO [LexResult]
 tokenize str = 
-  either (error . show) id (runParser tokens' () "" str)
+  either (error . show) return (runParser tokens' () "" str)
+
+-- outputLexResult ::
+
+-- handleError :: ParseError -> IO ()  
+-- handleError e = 
+--   case getUnexpected e of
+--     Nothing -> die $ show e
+--     Just unexp -> 
+--       let ln = sourceLine $ errorPos e in
+--         printf "[line %d] Error: Unexpected character: %s" ln unexp
+
+  
+
+-- getUnexpected :: ParseError -> Maybe String
+-- getUnexpected err =
+--   case [s | UnExpect s <- errorMessages err] of
+--     (x:_) -> Just x
+--     []    -> Nothing

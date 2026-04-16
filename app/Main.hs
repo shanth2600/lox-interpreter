@@ -5,7 +5,7 @@
 module Main (main) where
 
 import System.Environment (getArgs)
-import System.Exit (exitWith, exitFailure, ExitCode(ExitSuccess))
+import System.Exit (exitWith, exitFailure, ExitCode(ExitSuccess, ExitFailure), exitSuccess)
 import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBuffering), readFile)
 
 import Lexer
@@ -29,12 +29,23 @@ main = do
                     hPutStrLn stderr "Logs from your program will appear here!"
                     -- TODO: Uncomment the code below to pass the first stage
                     if not (null fileContents)
-                        then putStr (displayTokens $ tokenize fileContents)
+                        then tokenize fileContents >>= handleLexResult
                         else putStrLn "EOF  null"  -- Placeholder, replace this line when implementing the scanner
                     pure ()
         _ -> do
             hPutStrLn stderr "Usage: ./your_program.sh tokenize <filename>"
             exitFailure
 
-displayTokens :: [Token] -> String
-displayTokens = unlines . map show 
+handleLexResult :: [LexResult] -> IO ()
+handleLexResult res
+  | null errors = displayTokens >> exitSuccess
+  | otherwise   = do
+    displayTokens
+    hPutStrLn stderr (diplayResult errors)
+    exitWith (ExitFailure 65)
+  where
+    displayTokens = putStr (diplayResult tokens)
+    errors = [ e | e@(LexError {}) <- res]
+    tokens = [ t | t@(LexToken {}) <- res]
+    diplayResult :: [LexResult] -> String
+    diplayResult = unlines . map show
