@@ -11,11 +11,10 @@ type Parser = Parsec String ()
 token' :: Parser Token
 token' =
   (char '(' >> pure LeftParen) <|>
-  (char ')' >> pure RightParen) <|>
-  (eof >> pure EOF)
+  (char ')' >> pure RightParen)
 
 tokens' :: Parser [Token]  
-tokens' = (many1 token') <|> (eof $> [])
+tokens' = (many1 token') <> (eof $> [EOF])
 
 tokenize :: String -> [Token]
 tokenize str = 
