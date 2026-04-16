@@ -19,6 +19,7 @@ token' =
   (char ',' >> pure Comma) <|>
   (char '+' >> pure Plus) <|>
   (char '-' >> pure Minus) <|>
+  (char ';' >> pure Semicolon) <|>
   (char '/' >> pure Slash) 
 
 

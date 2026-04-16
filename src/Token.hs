@@ -14,10 +14,11 @@ data Token =
   | Plus
   | Minus
   | Slash
+  | Semicolon
   | EOF
 instance Show Token where
   show LeftParen  = "LEFT_PAREN ( null"
-  show RightParen =  "RIGHT_PAREN ) null"
+  show RightParen = "RIGHT_PAREN ) null"
   show LeftBrace  = "LEFT_BRACE { null"
   show RightBrace = "RIGHT_BRACE } null"
   show Star       = "STAR * null"
@@ -26,4 +27,5 @@ instance Show Token where
   show Plus       = "PLUS + null"
   show Minus      = "MINUS - null"
   show Slash      = "SLASH / null"
+  show Semicolon  = "SEMICOLON ; null"
   show EOF        = "EOF  null"
