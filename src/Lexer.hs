@@ -17,7 +17,7 @@ data LexResult = LexToken Token | LexError Char LineNumber
 
 instance Show LexResult where
   show (LexToken tkn) = show tkn
-  show (LexError c ln) = printf "[line %d] Error: Unexpected character: %s" ln c
+  show (LexError c ln) = printf "[line %d] Error: Unexpected character: %c" ln c
 
 
 type Parser = Parsec String ()
