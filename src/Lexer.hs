@@ -4,6 +4,7 @@ import Text.Parsec
 import Token
 import System.Exit (die)
 import Data.Either (fromRight)
+import Data.Functor (($>))
 
 type Parser = Parsec String ()
 
@@ -14,7 +15,7 @@ token' =
   (eof >> pure EOF)
 
 tokens' :: Parser [Token]  
-tokens' = many token'
+tokens' = many1 token' <|> (eof $> [])
 
 tokenize :: String -> [Token]
 tokenize str = 
