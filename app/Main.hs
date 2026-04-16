@@ -8,6 +8,8 @@ import System.Environment (getArgs)
 import System.Exit (exitWith, exitFailure, ExitCode(ExitSuccess))
 import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBuffering), readFile)
 
+import Lexer
+
 main :: IO ()
 main = do
     -- Disable output buffering
@@ -27,9 +29,12 @@ main = do
                     hPutStrLn stderr "Logs from your program will appear here!"
                     -- TODO: Uncomment the code below to pass the first stage
                     if not (null fileContents)
-                        then error "Scanner not implemented"
+                        then putStr (displayTokens $ tokenize fileContents)
                         else putStrLn "EOF  null"  -- Placeholder, replace this line when implementing the scanner
                     pure ()
         _ -> do
             hPutStrLn stderr "Usage: ./your_program.sh tokenize <filename>"
             exitFailure
+
+displayTokens :: [Token] -> String
+displayTokens = unlines . map show 
