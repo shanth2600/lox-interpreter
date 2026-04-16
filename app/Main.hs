@@ -26,9 +26,9 @@ main = do
                     -- You can use print statements as follows for debugging, they'll be visible when running tests.
                     hPutStrLn stderr "Logs from your program will appear here!"
                     -- TODO: Uncomment the code below to pass the first stage
-                    -- if not (null fileContents)
-                    --     then error "Scanner not implemented"
-                    --     else putStrLn "EOF  null"  -- Placeholder, replace this line when implementing the scanner
+                    if not (null fileContents)
+                        then error "Scanner not implemented"
+                        else putStrLn "EOF  null"  -- Placeholder, replace this line when implementing the scanner
                     pure ()
         _ -> do
             hPutStrLn stderr "Usage: ./your_program.sh tokenize <filename>"
