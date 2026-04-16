@@ -11,7 +11,9 @@ type Parser = Parsec String ()
 token' :: Parser Token
 token' =
   (char '(' >> pure LeftParen) <|>
-  (char ')' >> pure RightParen)
+  (char ')' >> pure RightParen) <|>
+  (char '{' >> pure LeftBrace) <|>
+  (char '}' >> pure RightBrace)
 
 tokens' :: Parser [Token]  
 tokens' = (many1 token') <> (eof $> [EOF])
