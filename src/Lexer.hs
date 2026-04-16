@@ -17,7 +17,9 @@ token' =
   (char '*' >> pure Star) <|>
   (char '.' >> pure Dot) <|>
   (char ',' >> pure Comma) <|>
-  (char '+' >> pure Plus)
+  (char '+' >> pure Plus) <|>
+  (char '-' >> pure Minus) <|>
+  (char '/' >> pure Slash) 
 
 
 tokens' :: Parser [Token]  
