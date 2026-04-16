@@ -13,7 +13,12 @@ token' =
   (char '(' >> pure LeftParen) <|>
   (char ')' >> pure RightParen) <|>
   (char '{' >> pure LeftBrace) <|>
-  (char '}' >> pure RightBrace)
+  (char '}' >> pure RightBrace) <|>
+  (char '*' >> pure Star) <|>
+  (char '.' >> pure Dot) <|>
+  (char ',' >> pure Comma) <|>
+  (char '+' >> pure Plus)
+
 
 tokens' :: Parser [Token]  
 tokens' = (many1 token') <> (eof $> [EOF])
