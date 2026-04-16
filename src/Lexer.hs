@@ -35,8 +35,10 @@ token' =
   (string "-" >> pure (LexToken Minus)) <|>
   (string ";" >> pure (LexToken Semicolon)) <|>
   (string "/" >> pure (LexToken Slash)) <|>
+  try (string "!=" >> pure (LexToken BangEqual)) <|>
   try (string "==" >> pure (LexToken EqualEqual)) <|>
   (string "=" >> pure (LexToken Equal)) <|>
+  (string "!" >> pure (LexToken Bang)) <|>
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
 

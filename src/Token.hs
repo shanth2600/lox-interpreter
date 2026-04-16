@@ -17,6 +17,8 @@ data Token =
   | Slash
   | Equal
   | EqualEqual
+  | Bang
+  | BangEqual
   | Semicolon
   | EOF
 instance Show Token where
@@ -34,4 +36,6 @@ instance Show Token where
   show Semicolon  = "SEMICOLON ; null"
   show Equal      = "EQUAL = null"
   show EqualEqual = "EQUAL_EQUAL == null"
+  show BangEqual  = "BANG_EQUAL != null"
+  show Bang       = "BANG ! null"
   show EOF        = "EOF  null"
