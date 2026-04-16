@@ -15,7 +15,7 @@ token' =
   (eof >> pure EOF)
 
 tokens' :: Parser [Token]  
-tokens' = many1 token' <|> (eof $> [])
+tokens' = (many1 token') <|> (eof $> [])
 
 tokenize :: String -> [Token]
 tokenize str = 
