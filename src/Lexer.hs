@@ -45,9 +45,12 @@ token' =
   (string "!" >> pure (LexToken Bang)) <|>
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
+comment :: Parser String  
+comment = string "//"
+
 
 tokens' :: Parser [LexResult]  
-tokens' = (many1 token') <> (eof $> [LexToken EOF])
+tokens' = manyTill token' (comment $> [] <|> eof $> [LexToken EOF])
 
 tokenize :: String -> IO [LexResult]
 tokenize str = 
