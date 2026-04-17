@@ -68,7 +68,7 @@ lString = do
   
 
 ident' :: Parser LexResult  
-ident' = LexToken . Ident <$> ((:) <$> (char '_' <|> letter) <*> many alphaNum)
+ident' = LexToken . Ident <$> ((:) <$> (char '_' <|> letter) <*> many (char '_' <|> alphaNum))
 
 
 tokensLine :: HasCallStack => Parser [LexResult]  
