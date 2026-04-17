@@ -50,7 +50,7 @@ instance Show Token where
   show Greater       = "GREATER > null"
   show GreaterEqual  = "GREATER_EQUAL >= null"
   show (LString str) = printf "STRING \"%s\" %s" str str
-  show (LNumber n)   = printf "NUMBER %s %s" n n
+  show (LNumber n)   = printf "NUMBER %s %.1f" n (read n :: Float)
   show EOF           = "EOF  null"
 
 -- LESS < null
