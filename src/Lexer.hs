@@ -47,7 +47,7 @@ token' =
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
 comment :: Parser String  
-comment = string "//"
+comment = try $ string "//"
 
 
 tokens' :: Parser [LexResult]  
