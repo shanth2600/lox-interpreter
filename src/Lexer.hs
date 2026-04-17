@@ -9,6 +9,7 @@ import Data.Functor (($>), (<&>))
 import Text.Parsec.Error (Message(UnExpect), errorMessages)
 import Text.Printf (printf)
 import Control.Monad (void)
+import GHC.Stack (HasCallStack)
 
 type LineNumber = Int
 
@@ -23,7 +24,7 @@ instance Show LexResult where
 
 type Parser = Parsec String ()
 
-token' :: Parser LexResult
+token' :: HasCallStack => Parser LexResult
 token' =
   try (string "!=" >> pure (LexToken BangEqual)) <|>
   try (string "==" >> pure (LexToken EqualEqual)) <|>
@@ -48,20 +49,27 @@ token' =
 
 
 
-tokens' :: Parser [LexResult]  
-tokens' = 
-  many space >> 
-  (manyTill (token' <* many space) (lookAhead endOfLine)) <> 
-  (endOfLine $> [LexToken EOF])
+tokensLine :: HasCallStack => Parser [LexResult]  
+tokensLine = do
+  _      <- many space 
+  tokens <- manyTill (token' <* many space) 
+           (lookAhead (try (void comment <|> endOfLine)))
+  _      <- manyTill anyChar (lookAhead endOfLine)
+  pure tokens
   where
     comment :: Parser String  
-    comment = try $ string "//"
-    endOfLine = void comment <|> eof
+    comment = string "//" <> manyTill anyChar (lookAhead endOfLine)
+    endOfLine = void (string "\n") <|> eof
+
+tokens' :: HasCallStack => Parser [LexResult]
+tokens' = 
+  (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
 
 
-tokenize :: String -> IO [LexResult]
+tokenize :: HasCallStack => String -> IO [LexResult]
 tokenize str = 
   either (error . show) return (runParser tokens' () "" str)
+  
 
 -- outputLexResult ::
 
