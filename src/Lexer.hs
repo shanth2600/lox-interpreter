@@ -30,6 +30,7 @@ token' =
   try (string "==" >> pure (LexToken EqualEqual)) <|>
   try (string "<=" >> pure (LexToken LessEqual)) <|>
   try (string ">=" >> pure (LexToken GreaterEqual)) <|>
+  try (string "and" >> pure (LexToken And)) <|>
   (string "(" >> pure (LexToken LeftParen)) <|>
   (string ")" >> pure (LexToken RightParen)) <|>
   (string "{" >> pure (LexToken LeftBrace)) <|>
