@@ -46,7 +46,7 @@ token' =
   (string ">" >> pure (LexToken Greater)) <|>
   (string "!" >> pure (LexToken Bang)) <|>
   lString <|>
-  (LexError <$> (getPosition <&> sourceLine) <*> ((printf "Unexpected character: %c") <$ anyChar ))
+  (LexError <$> (getPosition <&> sourceLine) <*> (printf "Unexpected character: %c" <$> anyChar ))
 
 lString :: Parser LexResult 
 lString = do
