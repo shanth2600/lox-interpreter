@@ -81,8 +81,8 @@ tokensLine = do
     endOfLine = void (string "\n") <|> eof
 
 tokens' :: HasCallStack => Parser [LexResult]
-tokens' = (:[]) <$> lNumber
-  -- (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
+tokens' =
+  (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
 
 
 tokenize :: HasCallStack => String -> IO [LexResult]
