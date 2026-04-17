@@ -8,6 +8,7 @@ import Data.Either (fromRight)
 import Data.Functor (($>), (<&>))
 import Text.Parsec.Error (Message(UnExpect), errorMessages)
 import Text.Printf (printf)
+import Control.Monad (void)
 
 type LineNumber = Int
 
@@ -50,7 +51,10 @@ comment = string "//"
 
 
 tokens' :: Parser [LexResult]  
-tokens' = manyTill token' ((comment $> [LexToken EOF]) <|> (eof $> [LexToken EOF]))
+tokens' = (manyTill token' (lookAhead endOfLine)) <> (endOfLine $> [LexToken EOF])
+  where
+    endOfLine = void comment <|> eof
+
 
 tokenize :: String -> IO [LexResult]
 tokenize str = 
