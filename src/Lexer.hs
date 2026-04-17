@@ -46,8 +46,6 @@ token' =
   (string "!" >> pure (LexToken Bang)) <|>
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
-comment :: Parser String  
-comment = try $ string "//"
 
 
 tokens' :: Parser [LexResult]  
@@ -56,6 +54,8 @@ tokens' =
   (manyTill (token' <* many space) (lookAhead endOfLine)) <> 
   (endOfLine $> [LexToken EOF])
   where
+    comment :: Parser String  
+    comment = try $ string "//"
     endOfLine = void comment <|> eof
 
 
