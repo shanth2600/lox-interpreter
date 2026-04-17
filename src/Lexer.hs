@@ -62,10 +62,12 @@ lString = do
   _ <- char '"'
   line <- getPosition <&> sourceLine
   str <- manyTill anyChar (lookAhead $ (void $ char '"') <|> eof)
-  res <- (char '"' $> LexToken (LString str)) <|>
-         (eof $> LexError line "Unterminated string.")
-         
-  pure res
+  (char '"' $> LexToken (LString str)) <|> 
+   (eof $> LexError line "Unterminated string.")
+  
+
+ident' :: Parser LexResult  
+ident' = LexToken . Ident <$> ((:) <$> (char '_' <|> letter) <*> many alphaNum)
 
 
 tokensLine :: HasCallStack => Parser [LexResult]  
@@ -83,6 +85,7 @@ tokensLine = do
 tokens' :: HasCallStack => Parser [LexResult]
 tokens' =
   (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
+
 
 
 tokenize :: HasCallStack => String -> IO [LexResult]

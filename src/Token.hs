@@ -28,6 +28,7 @@ data Token =
   | Semicolon
   | LString String
   | LNumber String
+  | Ident String
   | EOF
 instance Show Token where
   show :: Token -> String
@@ -51,6 +52,7 @@ instance Show Token where
   show Greater       = "GREATER > null"
   show GreaterEqual  = "GREATER_EQUAL >= null"
   show (LString str) = printf "STRING \"%s\" %s" str str
+  show (Ident id')   = printf "IDENTIFIER %s null" id'
   show (LNumber n)   = printf "NUMBER %s %s" n (formatNum n)
   show EOF           = "EOF  null"
 
