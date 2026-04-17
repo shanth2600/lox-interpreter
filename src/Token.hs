@@ -5,6 +5,7 @@ import Data.Maybe (maybe)
 import Data.List (intercalate)
 import Text.Printf (printf)
 import Data.List.Split (splitOn)
+import Data.Char (toUpper)
 
 data Token = 
     LeftParen 
@@ -29,8 +30,7 @@ data Token =
   | LString String
   | LNumber String
   | Ident String
-  | And
-  | Or
+  | Reserved String
   | EOF
 instance Show Token where
   show :: Token -> String
@@ -56,8 +56,7 @@ instance Show Token where
   show (LString str) = printf "STRING \"%s\" %s" str str
   show (Ident id')   = printf "IDENTIFIER %s null" id'
   show (LNumber n)   = printf "NUMBER %s %s" n (formatNum n)
-  show And           = "AND and null"
-  show And           = "OR or null"
+  show (Reserved wd) = intercalate " " [(toUpper <$> wd),wd,"null"]
   show EOF           = "EOF  null"
 
 formatNum :: String -> String  

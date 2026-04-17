@@ -30,8 +30,7 @@ token' =
   try (string "==" >> pure (LexToken EqualEqual)) <|>
   try (string "<=" >> pure (LexToken LessEqual)) <|>
   try (string ">=" >> pure (LexToken GreaterEqual)) <|>
-  try (string "and" >> pure (LexToken And)) <|>
-  try (string "or" >> pure (LexToken Or)) <|>
+  try reserved' <|>
   (string "(" >> pure (LexToken LeftParen)) <|>
   (string ")" >> pure (LexToken RightParen)) <|>
   (string "{" >> pure (LexToken LeftBrace)) <|>
@@ -51,6 +50,12 @@ token' =
   lNumber <|>
   ident' <|>
   (LexError <$> (getPosition <&> sourceLine) <*> (printf "Unexpected character: %c" <$> anyChar ))
+
+reservedWords :: [String]
+reservedWords = ["and", "class", "else", "false", "for", "fun", "if", "nil", "or", "print", "return", "super", "this", "true", "var", "while"]
+
+reserved' :: Parser LexResult
+reserved' = LexToken . Reserved <$> (choice $ string <$> reservedWords)
 
 lNumber :: Parser LexResult  
 lNumber = LexToken . LNumber <$> (try decimal <|> num)
