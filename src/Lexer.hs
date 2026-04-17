@@ -55,7 +55,7 @@ reservedWords :: [String]
 reservedWords = ["and", "class", "else", "false", "for", "fun", "if", "nil", "or", "print", "return", "super", "this", "true", "var", "while"]
 
 reserved' :: Parser LexResult
-reserved' = LexToken . Reserved <$> (choice $ string <$> reservedWords)
+reserved' = LexToken . Reserved <$> (choice $ (try . string) <$> reservedWords)
 
 lNumber :: Parser LexResult  
 lNumber = LexToken . LNumber <$> (try decimal <|> num)
