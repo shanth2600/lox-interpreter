@@ -4,6 +4,7 @@ module Token where
 import Data.Maybe (maybe)
 import Data.List (intercalate)
 import Text.Printf (printf)
+import Data.List.Split (splitOn)
 
 data Token = 
     LeftParen 
@@ -56,8 +57,16 @@ instance Show Token where
 formatNum :: String -> String  
 formatNum nStr = 
   if '.' `elem` nStr
-    then nStr
+    then truncateZeros nStr
     else nStr ++ ".0"
+  where
+    truncateZeros :: String -> String
+    truncateZeros decStr = 
+      case splitOn "." decStr of
+      [num,dec] -> 
+        if (all (== '0') dec)
+          then num ++ ".0"
+          else num ++ "." ++ dec
 
 -- LESS < null
 -- LESS_EQUAL <= null
