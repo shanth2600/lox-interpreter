@@ -46,7 +46,16 @@ token' =
   (string ">" >> pure (LexToken Greater)) <|>
   (string "!" >> pure (LexToken Bang)) <|>
   lString <|>
+  lNumber <|>
   (LexError <$> (getPosition <&> sourceLine) <*> (printf "Unexpected character: %c" <$> anyChar ))
+
+lNumber :: Parser LexResult  
+lNumber = LexToken . LNumber <$> (try decimal <|> num)
+  where 
+    num :: Parser String
+    num = many1 digit
+    decimal :: Parser String
+    decimal = (many1 digit <> string "." <> many1 digit)
 
 lString :: Parser LexResult 
 lString = do
@@ -72,8 +81,8 @@ tokensLine = do
     endOfLine = void (string "\n") <|> eof
 
 tokens' :: HasCallStack => Parser [LexResult]
-tokens' = 
-  (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
+tokens' = (:[]) <$> lNumber
+  -- (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
 
 
 tokenize :: HasCallStack => String -> IO [LexResult]
