@@ -50,8 +50,14 @@ instance Show Token where
   show Greater       = "GREATER > null"
   show GreaterEqual  = "GREATER_EQUAL >= null"
   show (LString str) = printf "STRING \"%s\" %s" str str
-  show (LNumber n)   = printf "NUMBER %s %f" n (read n :: Float)
+  show (LNumber n)   = printf "NUMBER %s %s" n (formatNum n)
   show EOF           = "EOF  null"
+
+formatNum :: String -> String  
+formatNum nStr = 
+  if '.' `elem` nStr
+    then nStr
+    else nStr ++ ".0"
 
 -- LESS < null
 -- LESS_EQUAL <= null
