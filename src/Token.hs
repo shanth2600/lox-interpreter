@@ -30,6 +30,7 @@ data Token =
   | LNumber String
   | Ident String
   | And
+  | Or
   | EOF
 instance Show Token where
   show :: Token -> String
@@ -56,6 +57,7 @@ instance Show Token where
   show (Ident id')   = printf "IDENTIFIER %s null" id'
   show (LNumber n)   = printf "NUMBER %s %s" n (formatNum n)
   show And           = "AND and null"
+  show And           = "OR or null"
   show EOF           = "EOF  null"
 
 formatNum :: String -> String  
