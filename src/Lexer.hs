@@ -15,11 +15,11 @@ type LineNumber = Int
 
 
 
-data LexResult = LexToken Token | LexError Char LineNumber
+data LexResult = LexToken Token | LexError LineNumber String
 
 instance Show LexResult where
   show (LexToken tkn) = show tkn
-  show (LexError c ln) = printf "[line %d] Error: Unexpected character: %c" ln c
+  show (LexError ln msg) = printf "[line %d] Error: %s" ln msg
 
 
 type Parser = Parsec String ()
@@ -45,8 +45,18 @@ token' =
   (string "<" >> pure (LexToken Less)) <|>
   (string ">" >> pure (LexToken Greater)) <|>
   (string "!" >> pure (LexToken Bang)) <|>
-  (LexError <$> anyChar <*> (getPosition <&> sourceLine))
+  lString <|>
+  (LexError <$> (getPosition <&> sourceLine) <*> ((printf "Unexpected character: %c") <$ anyChar ))
 
+lString :: Parser LexResult 
+lString = do
+  _ <- char '"'
+  line <- getPosition <&> sourceLine
+  str <- manyTill anyChar (lookAhead $ (void $ char '"') <|> eof)
+  res <- (char '"' $> LexToken (LString str)) <|>
+         (eof $> LexError line "Unterminated string.")
+         
+  pure res
 
 
 tokensLine :: HasCallStack => Parser [LexResult]  
