@@ -51,7 +51,10 @@ comment = try $ string "//"
 
 
 tokens' :: Parser [LexResult]  
-tokens' = (manyTill token' (lookAhead endOfLine)) <> (endOfLine $> [LexToken EOF])
+tokens' = 
+  many space >> 
+  (manyTill (token' <* many space) (lookAhead endOfLine)) <> 
+  (endOfLine $> [LexToken EOF])
   where
     endOfLine = void comment <|> eof
 
