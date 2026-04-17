@@ -50,7 +50,7 @@ comment = string "//"
 
 
 tokens' :: Parser [LexResult]  
-tokens' = manyTill token' (comment $> [LexToken EOF] <|> eof $> [LexToken EOF])
+tokens' = manyTill token' ((comment $> [LexToken EOF]) <|> (eof $> [LexToken EOF]))
 
 tokenize :: String -> IO [LexResult]
 tokenize str = 
