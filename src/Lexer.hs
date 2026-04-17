@@ -47,6 +47,7 @@ token' =
   (string "!" >> pure (LexToken Bang)) <|>
   lString <|>
   lNumber <|>
+  ident' <|>
   (LexError <$> (getPosition <&> sourceLine) <*> (printf "Unexpected character: %c" <$> anyChar ))
 
 lNumber :: Parser LexResult  
