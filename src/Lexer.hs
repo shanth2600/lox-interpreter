@@ -24,6 +24,10 @@ type Parser = Parsec String ()
 
 token' :: Parser LexResult
 token' =
+  try (string "!=" >> pure (LexToken BangEqual)) <|>
+  try (string "==" >> pure (LexToken EqualEqual)) <|>
+  try (string "<=" >> pure (LexToken LessEqual)) <|>
+  try (string ">=" >> pure (LexToken GreaterEqual)) <|>
   (string "(" >> pure (LexToken LeftParen)) <|>
   (string ")" >> pure (LexToken RightParen)) <|>
   (string "{" >> pure (LexToken LeftBrace)) <|>
@@ -35,9 +39,9 @@ token' =
   (string "-" >> pure (LexToken Minus)) <|>
   (string ";" >> pure (LexToken Semicolon)) <|>
   (string "/" >> pure (LexToken Slash)) <|>
-  try (string "!=" >> pure (LexToken BangEqual)) <|>
-  try (string "==" >> pure (LexToken EqualEqual)) <|>
   (string "=" >> pure (LexToken Equal)) <|>
+  (string "<" >> pure (LexToken Less)) <|>
+  (string ">" >> pure (LexToken Greater)) <|>
   (string "!" >> pure (LexToken Bang)) <|>
   (LexError <$> anyChar <*> (getPosition <&> sourceLine))
 
