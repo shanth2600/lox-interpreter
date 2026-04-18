@@ -53,7 +53,7 @@ eNil = ENil <$> (fst <$> reserved' "nil")
 
 eBool :: Parser (Exp SourcePos Bool)    
 eBool = do 
-  (n,b) <- (reserved' "true") <|> (reserved' "true")
+  (n,b) <- (reserved' "true") <|> (reserved' "false")
   pure $ EBool n (litToBool b)
   where
     litToBool :: String -> Bool
