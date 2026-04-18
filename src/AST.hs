@@ -61,7 +61,7 @@ instance Show (Exp n a) where
   show (EBool _ False)     = "false"
   show (Ident _ id')       = id'
   show (EString _ str)     = str
-  show (EGroup _ e)        = printf "(%s)" (show e)
+  show (EGroup _ e)        = printf "(group %s)" (show e)
   show (ENil _ )           = "nil"
 
 displayFloat :: Exp a Float -> String 
