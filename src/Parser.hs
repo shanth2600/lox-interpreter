@@ -10,6 +10,7 @@ import AST
 import Data.Functor (void, ($>))
 import Data.List.Split (splitOn)
 import Debug.Trace (trace)
+import Text.Read (readMaybe)
 
 
 type Parser = Parsec [T.Token SourcePos] ()
@@ -48,7 +49,10 @@ eInt = token show T.tokPos getInt
   where
     getInt (T.LNumber p nStr) = 
       case splitOn "." nStr of
-        [int] -> trace (show int) $ EInt p <$> read int
+        [int] -> 
+          case readMaybe int of
+            Nothing -> error ("cannot read int: " ++ (show int))
+            Just i -> return $ EInt p i
         _     -> Nothing
     getInt _                  = Nothing
 
