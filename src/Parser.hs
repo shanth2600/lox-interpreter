@@ -16,7 +16,7 @@ expr :: Parser (SomeExp SourcePos)
 expr = exprInt <|> (SomeExp <$> eBool) <|> (SomeExp <$> eNil)
 
 exprInt :: Parser (SomeExp SourcePos)
-exprInt = SomeExp <$> (try numBinOp <|> eInt)
+exprInt = SomeExp <$> ((try numBinOp) <|> eInt)
 
 numBinOp :: Parser (Exp SourcePos Int)
 numBinOp = do
