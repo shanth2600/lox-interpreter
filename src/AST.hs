@@ -30,14 +30,18 @@ instance Show Op where
 
 data SomeExp n where
   SomeExp :: Exp n a -> SomeExp n
+
+  
   
 
 data Exp n a  where
   EInt    :: n -> Int -> Exp n Int
   EFloat  :: n -> Int -> Int -> Exp n Float
+  ENeg    :: n -> Exp n a -> Exp n a
   EString :: n -> String -> Exp n String
   EBool   :: n -> Bool -> Exp n Bool
   EBinOp  :: n -> Op -> Exp n a -> Exp n a -> Exp n a
+  ENot    :: n -> Exp n Bool -> Exp n Bool
   Ident   :: n -> String -> Exp n String
   EGroup  :: n -> Exp n a -> Exp n a
   ENil    :: n -> Exp n a
@@ -50,6 +54,8 @@ expPos (EBool   n _)     = n
 expPos (EBinOp  n _ _ _) = n
 expPos (Ident   n _)     = n
 expPos (EGroup   n _)    = n
+expPos (ENeg   n _)      = n
+expPos (ENot   n _)      = n
 expPos (ENil    n)       = n
 
 instance Show (Exp n a) where
@@ -62,6 +68,8 @@ instance Show (Exp n a) where
   show (Ident _ id')       = id'
   show (EString _ str)     = str
   show (EGroup _ e)        = printf "(group %s)" (show e)
+  show (ENot _ e)          = printf "(! %s)" (show e)
+  show (ENeg _ e)          = printf "(- %s)" (show e)
   show (ENil _ )           = "nil"
 
 displayFloat :: Exp a Float -> String 

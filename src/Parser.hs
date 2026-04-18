@@ -22,6 +22,9 @@ expr =
   (SomeExp <$> eNil) <|>
   (SomeExp <$> eFloat) <|>
   (SomeExp <$> eString) <|>
+  (SomeExp <$> eNot) <|>
+  (SomeExp <$> eNegExpInt) <|>
+  (SomeExp <$> eNegExpFloat) <|>
   eGroup
 
 exprInt :: Parser (SomeExp SourcePos)
@@ -58,6 +61,24 @@ eGroup = do
   (SomeExp e) <- expr
   (T.RightParen p) <- token' $ T.RightParen ()
   pure $ SomeExp $ EGroup p e
+
+eNot :: Parser (Exp SourcePos Bool)
+eNot = do
+  t <- token' $ T.Bang ()
+  b <- eBool
+  pure $ ENot (T.tokPos t) b
+
+eNegExpInt :: Parser (Exp SourcePos Int)
+eNegExpInt = do
+  m <- token' $ T.Minus ()
+  num <- try eInt
+  pure $ ENeg (T.tokPos m) num
+
+eNegExpFloat :: Parser (Exp SourcePos Float)
+eNegExpFloat = do
+  m <- token' $ T.Minus ()
+  num <- try eFloat
+  pure $ ENeg (T.tokPos m) num
 
 
 eInt :: Parser (Exp SourcePos Int)
