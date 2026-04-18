@@ -47,7 +47,7 @@ expPos (Ident  n _)     = n
 
 instance Show (Exp n a) where
   show :: Exp n a -> String
-  show (EInt _ n)          = show n
+  show (EInt _ n)          = printf "%d.0" n
   show (EFloat _ n1 n2)    = intercalate "." [show n1, show n2]
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
