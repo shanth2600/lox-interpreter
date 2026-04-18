@@ -21,7 +21,8 @@ expr =
   (SomeExp <$> eBool) <|> 
   (SomeExp <$> eNil) <|>
   (SomeExp <$> eFloat) <|>
-  (SomeExp <$> eString)
+  (SomeExp <$> eString) <|>
+  eGroup
 
 exprInt :: Parser (SomeExp SourcePos)
 exprInt = SomeExp <$> ((try numBinOp) <|> eInt)
@@ -50,6 +51,14 @@ eString =  token show T.tokPos getStr
   where
     getStr (T.LString p str) = Just $ EString p str
     getStr _ = Nothing
+
+eGroup :: Parser (SomeExp SourcePos)    
+eGroup = do
+  (T.LeftParen p) <- token' $ T.LeftParen ()
+  (SomeExp e) <- expr
+  (T.RightParen p) <- token' $ T.RightParen ()
+  pure $ SomeExp $ EGroup p e
+
 
 eInt :: Parser (Exp SourcePos Int)
 eInt = token show T.tokPos getInt

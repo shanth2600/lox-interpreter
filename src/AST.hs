@@ -39,6 +39,7 @@ data Exp n a  where
   EBool   :: n -> Bool -> Exp n Bool
   EBinOp  :: n -> Op -> Exp n a -> Exp n a -> Exp n a
   Ident   :: n -> String -> Exp n String
+  EGroup  :: n -> Exp n a -> Exp n a
   ENil    :: n -> Exp n a
 
 expPos :: Exp n a -> n
@@ -48,6 +49,7 @@ expPos (EString n _)     = n
 expPos (EBool   n _)     = n
 expPos (EBinOp  n _ _ _) = n
 expPos (Ident   n _)     = n
+expPos (EGroup   n _)    = n
 expPos (ENil    n)       = n
 
 instance Show (Exp n a) where
@@ -59,6 +61,7 @@ instance Show (Exp n a) where
   show (EBool _ False)     = "false"
   show (Ident _ id')       = id'
   show (EString _ str)     = str
+  show (EGroup _ e)        = printf "(%s)" (show e)
   show (ENil _ )           = "nil"
 
 displayFloat :: Exp a Float -> String 
