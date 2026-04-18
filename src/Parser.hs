@@ -9,6 +9,7 @@ import qualified Lexer as L
 import AST
 import Data.Functor (void, ($>))
 import Data.List.Split (splitOn)
+import Debug.Trace (trace)
 
 
 type Parser = Parsec [T.Token SourcePos] ()
@@ -47,7 +48,7 @@ eInt = token show T.tokPos getInt
   where
     getInt (T.LNumber p nStr) = 
       case splitOn "." nStr of
-        [int] -> EInt p <$> read int
+        [int] -> trace (show int) $ EInt p <$> read int
         _     -> Nothing
     getInt _                  = Nothing
 
