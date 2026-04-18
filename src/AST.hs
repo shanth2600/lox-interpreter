@@ -33,17 +33,22 @@ data SomeExp n where
   
 
 data Exp n a  where
-  EInt   :: n -> Int -> Exp n Int
-  EFloat :: n -> Int -> Int -> Exp n Float
-  EBool  :: n -> Bool -> Exp n Bool
-  EBinOp :: n -> Op -> Exp n a -> Exp n a -> Exp n a
-  Ident  :: n -> String -> Exp n String
-  ENil   :: n -> Exp n a
+  EInt    :: n -> Int -> Exp n Int
+  EFloat  :: n -> Int -> Int -> Exp n Float
+  EString :: n -> String -> Exp n String
+  EBool   :: n -> Bool -> Exp n Bool
+  EBinOp  :: n -> Op -> Exp n a -> Exp n a -> Exp n a
+  Ident   :: n -> String -> Exp n String
+  ENil    :: n -> Exp n a
 
 expPos :: Exp n a -> n
-expPos (EInt   n _)     = n
-expPos (EBinOp n _ _ _) = n
-expPos (Ident  n _)     = n  
+expPos (EInt    n _)     = n
+expPos (EFloat  n _ _)   = n
+expPos (EString n _)     = n
+expPos (EBool   n _)     = n
+expPos (EBinOp  n _ _ _) = n
+expPos (Ident   n _)     = n
+expPos (ENil    n)       = n
 
 instance Show (Exp n a) where
   show :: Exp n a -> String
@@ -53,6 +58,7 @@ instance Show (Exp n a) where
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"
   show (Ident _ id')       = id'
+  show (EString _ str)     = str
   show (ENil _ )           = "nil"
 
 instance Show (SomeExp a) where

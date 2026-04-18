@@ -20,7 +20,8 @@ expr =
   exprInt <|> 
   (SomeExp <$> eBool) <|> 
   (SomeExp <$> eNil) <|>
-  (SomeExp <$> eFloat)
+  (SomeExp <$> eFloat) <|>
+  (SomeExp <$> eString)
 
 exprInt :: Parser (SomeExp SourcePos)
 exprInt = SomeExp <$> ((try numBinOp) <|> eInt)
@@ -43,6 +44,12 @@ op =
   (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
   (token' (T.Less ()) $> Less) <|>
   (token' (T.LessEqual ()) $> LessEqual)
+
+eString :: Parser (Exp SourcePos String)
+eString =  token show T.tokPos getStr
+  where
+    getStr (T.LString p str) = Just $ EString p str
+    getStr _ = Nothing
 
 eInt :: Parser (Exp SourcePos Int)
 eInt = token show T.tokPos getInt
