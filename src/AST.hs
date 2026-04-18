@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 module AST where
 import Text.Printf (printf)
+import GHC.Float (int2Float)
 
 data Op = 
     Plus 
@@ -43,7 +44,7 @@ expPos (Ident  n _)     = n
 
 instance Show (Exp n a) where
   show :: Exp n a -> String
-  show (EInt _ n)          = printf "%.1f" n
+  show (EInt _ n)          = printf "%.1f" (int2Float n)
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"
