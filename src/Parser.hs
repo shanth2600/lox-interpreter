@@ -55,5 +55,5 @@ testParse str = either (error . show) id (runParser (token' (T.EOF ())) () "" le
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
 parseTokens :: [T.Token SourcePos] -> Either ParseError (SomeExp SourcePos)
-parseTokens = undefined
+parseTokens = runParser expr () ""
 
