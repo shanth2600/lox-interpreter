@@ -3,7 +3,7 @@
 module AST where
 import Text.Printf (printf)
 import GHC.Float (int2Float)
-import Data.List (intercalate)
+import Data.List (intercalate, dropWhileEnd)
 
 data Op = 
     Plus 
@@ -60,6 +60,15 @@ instance Show (Exp n a) where
   show (Ident _ id')       = id'
   show (EString _ str)     = str
   show (ENil _ )           = "nil"
+
+displayFloat :: Exp a Float -> String 
+displayFloat (EFloat _ int dec) = 
+  intercalate "." [show int, truncatedDec]
+  where
+    truncatedDec = 
+      let dec' = dropWhileEnd (== '0') (show dec) 
+      in if null dec' then "0" else dec'
+
 
 instance Show (SomeExp a) where
   show (SomeExp exp) = show exp
