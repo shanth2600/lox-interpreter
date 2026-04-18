@@ -57,7 +57,7 @@ eFloat = token show T.tokPos getInt
   where
     getInt (T.LNumber p nStr) = 
       case splitOn "." nStr of
-        [int,dec] -> EFloat p <$> read int <*> read dec
+        [int,dec] -> trace (show int) $ EFloat p <$> read int <*> read dec
         _     -> Nothing
     getInt _                  = Nothing
 
