@@ -27,9 +27,6 @@ data Token a =
   | Greater a 
   | GreaterEqual a 
   | Semicolon a 
-  | TTrue a
-  | TFalse a
-  | Nil a
   | LString a String 
   | LNumber a String
   | Ident a String 

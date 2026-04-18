@@ -13,9 +13,10 @@ import Data.Functor (void, ($>))
 type Parser = Parsec [T.Token SourcePos] ()
 
 expr :: Parser (SomeExp SourcePos)
-expr = SomeExp <$>
-  (numBinOp <|> eInt)
-  
+expr = exprInt <|> (SomeExp <$> eBool) <|> (SomeExp <$> eNil)
+
+exprInt :: Parser (SomeExp SourcePos)
+exprInt = SomeExp <$> (numBinOp <|> eInt)
 
 numBinOp :: Parser (Exp SourcePos Int)
 numBinOp = do
@@ -42,10 +43,29 @@ eInt = token show T.tokPos getInt
     getInt (T.LNumber p nStr) = Just (EInt p (read nStr))
     getInt _                  = Nothing
 
+reserved' :: String -> Parser (SourcePos, String)
+reserved' rsvd = do 
+  (T.Reserved n _) <- token' $ T.Reserved () rsvd 
+  return (n,rsvd)
+
+eNil :: Parser (Exp SourcePos a)
+eNil = ENil <$> (fst <$> reserved' "nil")
+
+eBool :: Parser (Exp SourcePos Bool)    
+eBool = do 
+  (n,b) <- (reserved' "true") <|> (reserved' "true")
+  pure $ EBool n (litToBool b)
+  where
+    litToBool :: String -> Bool
+    litToBool "true"  = True
+    litToBool "false" = False
+    litToBool _       = undefined
+
 token' :: T.Token () -> Parser (T.Token SourcePos)
 token' t = token show T.tokPos isToken
   where
     isToken t' = if t == void t' then Just t' else Nothing
+
 
 
 
