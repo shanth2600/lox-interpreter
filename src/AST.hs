@@ -3,6 +3,7 @@
 module AST where
 import Text.Printf (printf)
 import GHC.Float (int2Float)
+import Data.List (intercalate)
 
 data Op = 
     Plus 
@@ -29,9 +30,11 @@ instance Show Op where
 
 data SomeExp n where
   SomeExp :: Exp n a -> SomeExp n
+  
 
 data Exp n a  where
   EInt   :: n -> Int -> Exp n Int
+  EFloat :: n -> Int -> Int -> Exp n Float
   EBool  :: n -> Bool -> Exp n Bool
   EBinOp :: n -> Op -> Exp n a -> Exp n a -> Exp n a
   Ident  :: n -> String -> Exp n String
@@ -44,7 +47,8 @@ expPos (Ident  n _)     = n
 
 instance Show (Exp n a) where
   show :: Exp n a -> String
-  show (EInt _ n)          = printf "%.1f" (int2Float n)
+  show (EInt _ n)          = n
+  show (EFloat _ n1 n2)    = intercalate "." [show n1, show n2]
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"

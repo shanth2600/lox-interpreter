@@ -8,12 +8,17 @@ import qualified Token as T
 import qualified Lexer as L
 import AST
 import Data.Functor (void, ($>))
+import Data.List.Split (splitOn)
 
 
 type Parser = Parsec [T.Token SourcePos] ()
 
 expr :: Parser (SomeExp SourcePos)
-expr = exprInt <|> (SomeExp <$> eBool) <|> (SomeExp <$> eNil)
+expr = 
+  exprInt <|> 
+  (SomeExp <$> eBool) <|> 
+  (SomeExp <$> eNil) <|>
+  (SomeExp <$> eFloat)
 
 exprInt :: Parser (SomeExp SourcePos)
 exprInt = SomeExp <$> ((try numBinOp) <|> eInt)
@@ -40,7 +45,19 @@ op =
 eInt :: Parser (Exp SourcePos Int)
 eInt = token show T.tokPos getInt
   where
-    getInt (T.LNumber p nStr) = Just (EInt p (read nStr))
+    getInt (T.LNumber p nStr) = 
+      case splitOn "." nStr of
+        [int] -> EInt p <$> read int
+        _     -> Nothing
+    getInt _                  = Nothing
+
+eFloat :: Parser (Exp SourcePos Float)
+eFloat = token show T.tokPos getInt
+  where
+    getInt (T.LNumber p nStr) = 
+      case splitOn "." nStr of
+        [int,dec] -> EFloat p <$> read int <*> read dec
+        _     -> Nothing
     getInt _                  = Nothing
 
 reserved' :: String -> Parser (SourcePos, String)
