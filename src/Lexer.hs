@@ -15,7 +15,7 @@ type LineNumber = Int
 
 
 
-data LexResult = LexToken Token | LexError LineNumber String
+data LexResult = LexToken (Token SourcePos) | LexError LineNumber String
 
 instance Show LexResult where
   show (LexToken tkn) = show tkn
@@ -24,41 +24,63 @@ instance Show LexResult where
 
 type Parser = Parsec String ()
 
+posToken :: (SourcePos -> Token SourcePos) -> Parser LexResult
+posToken t = LexToken . t <$> getPosition
+
 token' :: HasCallStack => Parser LexResult
 token' =
-  try (string "!=" >> pure (LexToken BangEqual)) <|>
-  try (string "==" >> pure (LexToken EqualEqual)) <|>
-  try (string "<=" >> pure (LexToken LessEqual)) <|>
-  try (string ">=" >> pure (LexToken GreaterEqual)) <|>
+  try (string "!=" >> posToken BangEqual) <|>
+  try (string "==" >> posToken EqualEqual) <|>
+  try (string "<=" >> posToken LessEqual) <|>
+  try (string ">=" >> posToken GreaterEqual) <|>
   try reserved' <|>
-  (string "(" >> pure (LexToken LeftParen)) <|>
-  (string ")" >> pure (LexToken RightParen)) <|>
-  (string "{" >> pure (LexToken LeftBrace)) <|>
-  (string "}" >> pure (LexToken RightBrace)) <|>
-  (string "*" >> pure (LexToken Star)) <|>
-  (string "." >> pure (LexToken Dot)) <|>
-  (string "," >> pure (LexToken Comma)) <|>
-  (string "+" >> pure (LexToken Plus)) <|>
-  (string "-" >> pure (LexToken Minus)) <|>
-  (string ";" >> pure (LexToken Semicolon)) <|>
-  (string "/" >> pure (LexToken Slash)) <|>
-  (string "=" >> pure (LexToken Equal)) <|>
-  (string "<" >> pure (LexToken Less)) <|>
-  (string ">" >> pure (LexToken Greater)) <|>
-  (string "!" >> pure (LexToken Bang)) <|>
+  (string "(" >> posToken LeftParen) <|>
+  (string ")" >> posToken RightParen) <|>
+  (string "{" >> posToken LeftBrace) <|>
+  (string "}" >> posToken RightBrace) <|>
+  (string "*" >> posToken Star) <|>
+  (string "." >> posToken Dot) <|>
+  (string "," >> posToken Comma) <|>
+  (string "+" >> posToken Plus) <|>
+  (string "-" >> posToken Minus) <|>
+  (string ";" >> posToken Semicolon) <|>
+  (string "/" >> posToken Slash) <|>
+  (string "=" >> posToken Equal) <|>
+  (string "<" >> posToken Less) <|>
+  (string ">" >> posToken Greater) <|>
+  (string "!" >> posToken Bang) <|>
   lString <|>
   lNumber <|>
   ident' <|>
   (LexError <$> (getPosition <&> sourceLine) <*> (printf "Unexpected character: %c" <$> anyChar ))
 
 reservedWords :: [String]
-reservedWords = ["and", "class", "else", "false", "for", "fun", "if", "nil", "or", "print", "return", "super", "this", "true", "var", "while"]
+reservedWords = 
+  ["and",
+   "class",
+   "else",
+   "false",
+   "for",
+   "fun",
+   "if",
+   "nil",
+   "or",
+   "print",
+   "return",
+   "super",
+   "this",
+   "true",
+   "var",
+   "while"
+  ]
 
 reserved' :: Parser LexResult
-reserved' = LexToken . Reserved <$> (choice $ (try . string) <$> reservedWords)
+reserved' =  
+  LexToken <$> 
+    (Reserved <$> getPosition <*> (choice $ map string' reservedWords))
 
 lNumber :: Parser LexResult  
-lNumber = LexToken . LNumber <$> (try decimal <|> num)
+lNumber = LexToken <$> (LNumber <$> getPosition <*> (try decimal <|> num))
   where 
     num :: Parser String
     num = many1 digit
@@ -70,12 +92,14 @@ lString = do
   _ <- char '"'
   line <- getPosition <&> sourceLine
   str <- manyTill anyChar (lookAhead $ (void $ char '"') <|> eof)
-  (char '"' $> LexToken (LString str)) <|> 
+  (char '"' *> (LexToken <$> (LString <$> getPosition <*> pure str))) <|> 
    (eof $> LexError line "Unterminated string.")
   
 
 ident' :: Parser LexResult  
-ident' = LexToken . Ident <$> ((:) <$> (char '_' <|> letter) <*> many (char '_' <|> alphaNum))
+ident' = 
+  LexToken <$> (Ident <$> getPosition <*>
+    ((:) <$> (char '_' <|> letter) <*> many (char '_' <|> alphaNum)))
 
 
 tokensLine :: HasCallStack => Parser [LexResult]  
@@ -92,13 +116,15 @@ tokensLine = do
 
 tokens' :: HasCallStack => Parser [LexResult]
 tokens' =
-  (concat <$> (sepBy tokensLine newline)) <> (eof $> [LexToken EOF])
+  (concat <$> (sepBy tokensLine newline)) <> 
+    (eof >> getPosition >>= \p -> pure [LexToken (EOF p)])
 
 
 
-tokenize :: HasCallStack => String -> IO [LexResult]
-tokenize str = 
-  either (error . show) return (runParser tokens' () "" str)
+tokenize :: HasCallStack => FilePath -> String -> [LexResult]
+tokenize path str = 
+  either (error . show) id (runParser tokens' () path str)
+
   
 
 -- outputLexResult ::
