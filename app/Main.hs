@@ -12,6 +12,7 @@ import Lexer
 import Parser (expr, parseTokens, LoxParseError)
 import Text.Parsec (ParseError, SourcePos)
 import AST
+import Interp (eval)
 
 main :: IO ()
 main = do
@@ -24,10 +25,14 @@ main = do
         (command : filename : _) -> do
             fileContents <- readFile filename
             let lexResults = tokenize filename fileContents
+            let parseResult = parseTokens $ lexTokens $ lexResults
             case command of
                 "tokenize" -> handleLexResult lexResults
-                "parse"    -> handleParseResult $ 
-                                parseTokens $ lexTokens $ lexResults
+                "parse"    -> handleParseResult $ parseResult
+                "eval"     ->
+                  case parseResult of
+                    Left _ -> error "parse error" 
+                    Right ast -> putStrLn $ show $ eval ast
                 _          -> hPutStrLn stderr ("Unknown command: " ++ command) >>
                               exitFailure
         _ -> do
@@ -39,6 +44,9 @@ handleParseResult =
   either 
     (\e -> (hPutStrLn stderr $ show e) >> exitWith (ExitFailure 65)) 
     (putStrLn . show)
+
+parseString :: String -> Exp SourcePos
+parseString = parseTokens . lexTokens
 
 lexTokens :: [LexResult] -> [Token SourcePos]
 lexTokens res = [ t | (LexToken t) <- res]
