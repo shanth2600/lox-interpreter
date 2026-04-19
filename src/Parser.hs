@@ -3,6 +3,7 @@ module Parser where
 
 import Text.Parsec
 import Text.Parsec.Pos
+import Text.Parsec.Expr
 
 import qualified Token as T
 import qualified Lexer as L
@@ -11,11 +12,15 @@ import Data.Functor (void, ($>))
 import Data.List.Split (splitOn)
 import Debug.Trace (trace)
 import Text.Read (readMaybe)
+import Text.Parsec.Expr (OperatorTable)
+import Control.Monad.Identity
+
+type ExpS = Exp SourcePos
 
 
 type Parser = Parsec [T.Token SourcePos] ()
 
-expr :: Parser (Exp SourcePos)
+expr :: Parser ExpS
 expr = 
   exprInt      <|> 
   eBool        <|> 
@@ -27,15 +32,18 @@ expr =
   eNegExpFloat <|>
   eGroup
 
-exprInt :: Parser (Exp SourcePos)
+exprInt :: Parser ExpS
 exprInt = (try numBinOp) <|> eInt
 
-numBinOp :: Parser (Exp SourcePos)
+numBinOp :: Parser ExpS
 numBinOp = do
   e1 <- eInt
   op' <- op
   e2 <- eInt
   return $ EBinOp (expPos e1) op' e1 e2
+
+binOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+binOp n =  EBinOp n <$> op
 
 op :: Parser Op
 op =
@@ -48,40 +56,59 @@ op =
   (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
   (token' (T.Less ()) $> Less) <|>
   (token' (T.LessEqual ()) $> LessEqual)
+ 
 
-eString :: Parser (Exp SourcePos)
+numLit :: Parser ExpS
+numLit = eInt <|> eFloat
+
+mulExp :: Parser ExpS
+mulExp = do
+  lit <- lookAhead numLit
+  numLit `chainl1` (binOp (expPos lit))
+
+-- addOp :: Parser Op
+-- addOp = 
+--   (token' (T.Plus ()) $> Plus) <|>
+--   (token' (T.Minus ()) $> Minus)
+
+-- mulOp :: Parser Op
+-- mulOp = 
+--   (token' (T.Star ()) $> Mult) <|>
+--   (token' (T.Slash ()) $> Div)
+
+eString :: Parser ExpS
 eString =  token show T.tokPos getStr
   where
     getStr (T.LString p str) = Just $ EString p str
     getStr _ = Nothing
 
-eGroup :: Parser (Exp SourcePos)    
+eGroup :: Parser ExpS    
 eGroup = do
   lp <- token' $ T.LeftParen ()
   e <- expr
   _ <- token' $ T.RightParen ()
   pure $ EGroup (T.tokPos lp) e
 
-eNot :: Parser (Exp SourcePos)
+eNot :: Parser ExpS
 eNot = do
   t <- token' $ T.Bang ()
   b <- expr
   pure $ ENot (T.tokPos t) b
 
-eNegExpInt :: Parser (Exp SourcePos)
+eNegExpInt :: Parser ExpS
 eNegExpInt = do
   m <- token' $ T.Minus ()
   num <- try eInt
   pure $ ENeg (T.tokPos m) num
 
-eNegExpFloat :: Parser (Exp SourcePos)
+eNegExpFloat :: Parser ExpS
 eNegExpFloat = do
   m <- token' $ T.Minus ()
   num <- try eFloat
   pure $ ENeg (T.tokPos m) num
 
 
-eInt :: Parser (Exp SourcePos)
+eInt :: Parser ExpS
 eInt = token show T.tokPos getInt
   where
     getInt (T.LNumber p nStr) = 
@@ -93,7 +120,7 @@ eInt = token show T.tokPos getInt
         _     -> Nothing
     getInt _                  = Nothing
 
-eFloat :: Parser (Exp SourcePos)
+eFloat :: Parser ExpS
 eFloat = token show T.tokPos getFloat
   where
     getFloat (T.LNumber p nStr) = 
@@ -110,10 +137,10 @@ reserved' rsvd = do
   t <- token' $ T.Reserved () rsvd 
   return (T.tokPos t, rsvd)
 
-eNil :: Parser (Exp SourcePos)
+eNil :: Parser ExpS
 eNil = ENil <$> (fst <$> reserved' "nil")
 
-eBool :: Parser (Exp SourcePos)    
+eBool :: Parser ExpS    
 eBool = do 
   (n,b) <- (reserved' "true") <|> (reserved' "false")
   pure $ EBool n (litToBool b)
@@ -131,11 +158,11 @@ token' t = token show T.tokPos isToken
 
 
 
-testParse :: String -> T.Token SourcePos
-testParse str = either (error . show) id (runParser (token' (T.EOF ())) () "" lexTokens)
+testParse :: String -> Exp SourcePos
+testParse str = either (error . show) id (runParser mulExp () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
-parseTokens :: [T.Token SourcePos] -> Either ParseError (Exp SourcePos)
+parseTokens :: [T.Token SourcePos] -> Either ParseError ExpS
 parseTokens = runParser expr () ""
 
