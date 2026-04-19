@@ -2,7 +2,7 @@
 module Token where
 
 import Data.Maybe (maybe)
-import Data.List (intercalate)
+import Data.List (intercalate, dropWhileEnd)
 import Text.Printf (printf)
 import Data.List.Split (splitOn)
 import Data.Char (toUpper)
@@ -103,9 +103,8 @@ formatNum nStr =
     truncateZeros decStr = 
       case splitOn "." decStr of
       [num,dec] -> 
-        if (all (== '0') dec)
-          then num ++ ".0"
-          else num ++ "." ++ dec
+        let dec' = dropWhileEnd (== '0') (show dec) 
+        in if null dec' then "0" else dec'
 
 tokPos :: Token a -> a
 tokPos (LeftParen a)     = a
@@ -132,8 +131,3 @@ tokPos (LNumber a _)     = a
 tokPos (Ident a _)       = a
 tokPos (Reserved a _)    = a
 tokPos (EOF a)           = a          
-
--- LESS < null
--- LESS_EQUAL <= null
--- GREATER > null
--- GREATER_EQUAL >= null  
