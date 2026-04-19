@@ -22,7 +22,7 @@ type Parser = Parsec [T.Token SourcePos] ()
 
 expr :: Parser ExpS
 expr =
-  try arithExp <|>
+  try arithAddExp <|>
   eFloat       <|>
   eInt         <|> 
   eBool        <|> 
@@ -43,15 +43,12 @@ numBinOp = do
   e2 <- eInt
   return $ EBinOp (expPos e1) op' e1 e2
 
-binOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
-binOp n =  EBinOp n <$> op
-
 op :: Parser Op
 op =
-  (token' (T.Plus ()) $> Plus) <|>
-  (token' (T.Minus ()) $> Minus) <|>
   (token' (T.Star ()) $> Mult) <|>
   (token' (T.Slash ()) $> Div) <|>
+  (token' (T.Plus ()) $> Plus) <|>
+  (token' (T.Minus ()) $> Minus) <|>
   (token' (T.EqualEqual ()) $> Equal) <|>
   (token' (T.Greater ()) $> Greater) <|>
   (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
@@ -70,20 +67,33 @@ binOperand =
 numLit :: Parser ExpS
 numLit = eInt <|> eFloat
 
-arithExp :: Parser ExpS
-arithExp = do
+addBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+addBinOp n =  EBinOp n <$> addOp
+
+mulBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+mulBinOp n =  EBinOp n <$> mulOp
+
+arithAddExp :: Parser ExpS
+arithAddExp = do
+  lhs' <- lookAhead lhs
+  lhs `chainl1` (addBinOp (expPos lhs'))
+  where
+    lhs = arithMulExp <|> binOperand
+
+arithMulExp :: Parser ExpS
+arithMulExp = do
   opr <- (lookAhead binOperand)
-  binOperand `chainl1` (binOp (expPos opr))
+  binOperand `chainl1` (mulBinOp (expPos opr))
 
--- addOp :: Parser Op
--- addOp = 
---   (token' (T.Plus ()) $> Plus) <|>
---   (token' (T.Minus ()) $> Minus)
+addOp :: Parser Op
+addOp = 
+  (token' (T.Plus ()) $> Plus) <|>
+  (token' (T.Minus ()) $> Minus)
 
--- mulOp :: Parser Op
--- mulOp = 
---   (token' (T.Star ()) $> Mult) <|>
---   (token' (T.Slash ()) $> Div)
+mulOp :: Parser Op
+mulOp = 
+  (token' (T.Star ()) $> Mult) <|>
+  (token' (T.Slash ()) $> Div)
 
 eString :: Parser ExpS
 eString =  token show T.tokPos getStr
@@ -168,7 +178,7 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser arithExp () "" lexTokens)
+testParse str = either (error . show) id (runParser arithAddExp () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
