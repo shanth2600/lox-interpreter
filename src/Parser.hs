@@ -23,37 +23,16 @@ type Parser = Parsec [T.Token SourcePos] ()
 expr :: Parser ExpS
 expr =
   try arithAddExp <|>
-  eFloat       <|>
-  eInt         <|> 
-  eBool        <|> 
-  eNil         <|>
-  eString      <|>
-  eNot         <|>
-  eNegExpInt   <|>
-  eNegExpFloat <|>
+  eFloat          <|>
+  eInt            <|> 
+  eBool           <|> 
+  eNil            <|>
+  eString         <|>
+  eNot            <|>
+  eNegExpInt      <|>
+  eNegExpFloat    <|>
   eGroup
 
-exprInt :: Parser ExpS
-exprInt = (try numBinOp) <|> eInt
-
-numBinOp :: Parser ExpS
-numBinOp = do
-  e1 <- eInt
-  op' <- op
-  e2 <- eInt
-  return $ EBinOp (expPos e1) op' e1 e2
-
-op :: Parser Op
-op =
-  (token' (T.Star ()) $> Mult) <|>
-  (token' (T.Slash ()) $> Div) <|>
-  (token' (T.Plus ()) $> Plus) <|>
-  (token' (T.Minus ()) $> Minus) <|>
-  (token' (T.EqualEqual ()) $> Equal) <|>
-  (token' (T.Greater ()) $> Greater) <|>
-  (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
-  (token' (T.Less ()) $> Less) <|>
-  (token' (T.LessEqual ()) $> LessEqual)
 
 binOperand :: Parser ExpS
 binOperand =
@@ -64,26 +43,14 @@ binOperand =
   eGroup
  
 
-numLit :: Parser ExpS
-numLit = eInt <|> eFloat
-
 addBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 addBinOp n =  EBinOp n <$> addOp
 
 mulBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 mulBinOp n =  EBinOp n <$> mulOp
 
-arithAddExp :: Parser ExpS
-arithAddExp = do
-  lhs' <- lookAhead lhs
-  lhs `chainl1` (addBinOp (expPos lhs'))
-  where
-    lhs = arithMulExp <|> binOperand
-
-arithMulExp :: Parser ExpS
-arithMulExp = do
-  opr <- (lookAhead binOperand)
-  binOperand `chainl1` (mulBinOp (expPos opr))
+relBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+relBinOp n =  EBinOp n <$> relOp
 
 addOp :: Parser Op
 addOp = 
@@ -95,6 +62,35 @@ mulOp =
   (token' (T.Star ()) $> Mult) <|>
   (token' (T.Slash ()) $> Div)
 
+relOp :: Parser Op  
+relOp = 
+  (token' (T.EqualEqual ()) $> Equal) <|>
+  (token' (T.Greater ()) $> Greater) <|>
+  (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
+  (token' (T.Less ()) $> Less) <|>
+  (token' (T.LessEqual ()) $> LessEqual)
+
+
+arithAddExp :: Parser ExpS
+arithAddExp = do
+  lhs' <- lookAhead lhs
+  lhs `chainl1` (addBinOp (expPos lhs'))
+  where
+    lhs = arithMulExp <|> binOperand
+
+arithMulExp :: Parser ExpS
+arithMulExp = do
+  lhs' <- lookAhead lhs
+  lhs `chainl1` (mulBinOp (expPos lhs'))
+  where
+    lhs = arithRelExp <|> binOperand
+
+arithRelExp :: Parser ExpS
+arithRelExp = do
+  opr <- (lookAhead binOperand)
+  binOperand `chainl1` (relBinOp (expPos opr))
+
+  
 eString :: Parser ExpS
 eString =  token show T.tokPos getStr
   where
@@ -114,6 +110,7 @@ eNot = do
   b <- expr
   pure $ ENot (T.tokPos t) b
 
+
 eNegExpInt :: Parser ExpS
 eNegExpInt = do
   m <- token' $ T.Minus ()
@@ -126,6 +123,8 @@ eNegExpFloat = do
   num <- try eFloat
   pure $ ENeg (T.tokPos m) num
 
+numLit :: Parser ExpS
+numLit = eInt <|> eFloat
 
 eInt :: Parser ExpS
 eInt = token show T.tokPos getInt
@@ -178,7 +177,7 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser arithAddExp () "" lexTokens)
+testParse str = either (error . show) id (runParser expr () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
