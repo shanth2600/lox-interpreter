@@ -14,15 +14,26 @@ import Debug.Trace (trace)
 import Text.Read (readMaybe)
 import Text.Parsec.Expr (OperatorTable)
 import Control.Monad.Identity
+import Text.Parsec.Error (errorMessages, messageString)
+import Text.Printf (printf)
+import Data.Either.Extra (mapLeft)
 
 type ExpS = Exp SourcePos
+
+type LineNumber = Int
+
+data LoxParseError = LoxParseError LineNumber String String
+
+instance Show LoxParseError where
+  show (LoxParseError ln tk msg) 
+    = printf "[line %d] Error at '%s': %s." ln tk msg
 
 
 type Parser = Parsec [T.Token SourcePos] ()
 
 expr :: Parser ExpS
 expr =
-  try arithAddExp <|>
+  arithAddExp     <|>
   eFloat          <|>
   eInt            <|> 
   eBool           <|> 
@@ -176,10 +187,19 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser expr () "" lexTokens)
+testParse str = either (error . show . toLoxParseError) id (runParser expr () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
-parseTokens :: [T.Token SourcePos] -> Either ParseError ExpS
-parseTokens = runParser expr () ""
+parseTokens :: [T.Token SourcePos] -> Either LoxParseError ExpS
+parseTokens tks = mapLeft toLoxParseError (runParser expr () "" tks)
 
+-- toLoxParseError :: ParseError ->
+toLoxParseError pErr = 
+    case errorMessages (pErr) of
+      (m:_) -> 
+        let char = T.tokenLiteral' $ messageString m
+            lnNo = sourceLine $ errorPos pErr
+        in LoxParseError lnNo char "Expect expression"
+      [] -> error "unkown parse error at: " (show $ errorPos pErr)
+  -- error $ show $ messageString $ head $ errorMessages (pErr)

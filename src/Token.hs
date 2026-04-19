@@ -88,10 +88,13 @@ instance Show (Token a) where
   show (EOF _)          = "EOF  null"
 
 tokenLiteral :: Token a -> String  
-tokenLiteral t =
-  case splitOn " " (show t) of
+tokenLiteral = tokenLiteral' . show
+
+tokenLiteral' :: String -> String
+tokenLiteral' tStr =
+  case splitOn " " tStr of
     [_,lit,_] -> lit
-    _         -> error $ printf "malformed Token definition: (%s)" (show t)
+    _         -> error $ printf "malformed Token definition: (%s)" tStr
 
 formatNum :: String -> String  
 formatNum nStr = 

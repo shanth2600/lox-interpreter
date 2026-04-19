@@ -9,7 +9,7 @@ import System.Exit (exitWith, exitFailure, ExitCode(ExitSuccess, ExitFailure), e
 import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBuffering), readFile)
 
 import Lexer
-import Parser (expr, parseTokens)
+import Parser (expr, parseTokens, LoxParseError)
 import Text.Parsec (ParseError, SourcePos)
 import AST
 
@@ -34,7 +34,7 @@ main = do
             hPutStrLn stderr "Usage: ./your_program.sh tokenize <filename>"
             exitFailure
 
-handleParseResult :: Either ParseError (Exp SourcePos) -> IO ()
+handleParseResult :: Either LoxParseError (Exp SourcePos) -> IO ()
 handleParseResult parseRes = either (hPutStrLn stderr . show) (putStrLn . show) parseRes
 
 lexTokens :: [LexResult] -> [Token SourcePos]

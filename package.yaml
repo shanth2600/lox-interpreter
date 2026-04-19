@@ -27,6 +27,7 @@ dependencies:
   - parsec
   - attoparsec
   - split
+  - extra
 
 executables:
   codecrafters-interpreter-exe:
