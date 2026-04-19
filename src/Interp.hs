@@ -6,14 +6,17 @@ import Text.Parsec (SourcePos)
 data Val = 
     VInt Int
   | VBool Bool
+  | VNil
   deriving Eq
 
 instance Show Val where
-  show (VInt n) = show n
-  show (VBool True) = "true"
+  show (VInt n)      = show n
+  show (VBool True)  = "true"
   show (VBool False) = "false"
+  show (VNil)        = "nil"
 
 eval :: Exp SourcePos -> Val
+eval (ENil _)     = VNil
 eval (EInt _ n)   = VInt n
 eval (EBool _ b)  = VBool b
 eval (ENot _ e) = case eval e of
