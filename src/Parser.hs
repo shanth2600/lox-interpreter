@@ -21,11 +21,12 @@ type ExpS = Exp SourcePos
 type Parser = Parsec [T.Token SourcePos] ()
 
 expr :: Parser ExpS
-expr = 
-  exprInt      <|> 
+expr =
+  try arithExp <|>
+  eFloat       <|>
+  eInt         <|> 
   eBool        <|> 
   eNil         <|>
-  eFloat       <|>
   eString      <|>
   eNot         <|>
   eNegExpInt   <|>
@@ -61,8 +62,8 @@ op =
 numLit :: Parser ExpS
 numLit = eInt <|> eFloat
 
-mulExp :: Parser ExpS
-mulExp = do
+arithExp :: Parser ExpS
+arithExp = do
   lit <- lookAhead numLit
   numLit `chainl1` (binOp (expPos lit))
 
