@@ -45,8 +45,6 @@ handleParseResult =
     (\e -> (hPutStrLn stderr $ show e) >> exitWith (ExitFailure 65)) 
     (putStrLn . show)
 
-parseString :: String -> Exp SourcePos
-parseString = parseTokens . lexTokens
 
 lexTokens :: [LexResult] -> [Token SourcePos]
 lexTokens res = [ t | (LexToken t) <- res]
