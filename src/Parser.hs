@@ -65,7 +65,7 @@ eGroup = do
 eNot :: Parser (Exp SourcePos)
 eNot = do
   t <- token' $ T.Bang ()
-  b <- try eBool <|> eNot
+  b <- expr
   pure $ ENot (T.tokPos t) b
 
 eNegExpInt :: Parser (Exp SourcePos)
