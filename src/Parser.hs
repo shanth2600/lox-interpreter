@@ -29,17 +29,15 @@ expr =
   eNil            <|>
   eString         <|>
   eNot            <|>
-  eNegExpInt      <|>
-  eNegExpFloat    <|>
+  eNegExp         <|>
   eGroup
 
 
 binOperand :: Parser ExpS
 binOperand =
-  try eNegExpFloat <|>
-  try eNegExpInt   <|>
-  eString          <|>
-  numLit           <|>
+  try eNegExp <|>
+  eString     <|>
+  numLit      <|>
   eGroup
  
 
@@ -111,17 +109,17 @@ eNot = do
   pure $ ENot (T.tokPos t) b
 
 
-eNegExpInt :: Parser ExpS
-eNegExpInt = do
+eNegExp :: Parser ExpS
+eNegExp = do
   m <- token' $ T.Minus ()
-  num <- try eInt
+  num <- try (eFloat <|> eInt <|> eGroup)
   pure $ ENeg (T.tokPos m) num
 
-eNegExpFloat :: Parser ExpS
-eNegExpFloat = do
-  m <- token' $ T.Minus ()
-  num <- try eFloat
-  pure $ ENeg (T.tokPos m) num
+-- eNegExpFloat :: Parser ExpS
+-- eNegExpFloat = do
+--   m <- token' $ T.Minus ()
+--   num <- try eFloat
+--   pure $ ENeg (T.tokPos m) num
 
 numLit :: Parser ExpS
 numLit = eInt <|> eFloat
