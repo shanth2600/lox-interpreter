@@ -159,7 +159,7 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser mulExp () "" lexTokens)
+testParse str = either (error . show) id (runParser expr () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
