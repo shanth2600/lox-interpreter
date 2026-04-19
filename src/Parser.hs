@@ -62,8 +62,8 @@ binOperand :: Parser ExpS
 binOperand =
   try eNegExpFloat <|>
   try eNegExpInt   <|>
-  numLit           <|>
   eString          <|>
+  numLit           <|>
   eGroup
  
 
@@ -72,8 +72,8 @@ numLit = eInt <|> eFloat
 
 arithExp :: Parser ExpS
 arithExp = do
-  lit <- lookAhead numLit
-  binOperand `chainl1` (binOp (expPos lit))
+  opr <- (lookAhead binOperand)
+  binOperand `chainl1` (binOp (expPos opr))
 
 -- addOp :: Parser Op
 -- addOp = 
@@ -168,7 +168,7 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser expr () "" lexTokens)
+testParse str = either (error . show) id (runParser arithExp () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
