@@ -57,6 +57,13 @@ op =
   (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
   (token' (T.Less ()) $> Less) <|>
   (token' (T.LessEqual ()) $> LessEqual)
+
+arithOperand :: Parser ExpS
+arithOperand =
+  try eNegExpFloat <|>
+  try eNegExpInt   <|>
+  numLit           <|>
+  eGroup
  
 
 numLit :: Parser ExpS
@@ -65,7 +72,7 @@ numLit = eInt <|> eFloat
 arithExp :: Parser ExpS
 arithExp = do
   lit <- lookAhead numLit
-  numLit `chainl1` (binOp (expPos lit))
+  arithOperand `chainl1` (binOp (expPos lit))
 
 -- addOp :: Parser Op
 -- addOp = 
