@@ -104,7 +104,7 @@ formatNum nStr =
       case splitOn "." decStr of
       [num,dec] -> 
         let dec' = dropWhileEnd (== '0') (show dec) 
-        in if null dec' then "0" else dec'
+        in if null dec' then num ++ ".0" else num ++ dec'
 
 tokPos :: Token a -> a
 tokPos (LeftParen a)     = a
