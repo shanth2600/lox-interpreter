@@ -29,7 +29,7 @@ main = do
             case command of
                 "tokenize" -> handleLexResult lexResults
                 "parse"    -> handleParseResult $ parseResult
-                "eval"     ->
+                "evaluate" ->
                   case parseResult of
                     Left _ -> error "parse error" 
                     Right ast -> putStrLn $ show $ eval ast
