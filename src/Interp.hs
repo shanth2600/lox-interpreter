@@ -32,6 +32,7 @@ eval (ENot _ e)          =
     _       -> error "type error"
 eval (ENeg _ n)          = case eval n of
   VInt n' -> VInt (- n')
+eval (EGroup _ e)        = eval e
 eval (EBinOp _ op e1 e2) = 
   let v1 = eval e1
       v2 = eval e2
