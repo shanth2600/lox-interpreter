@@ -61,7 +61,8 @@ mulOp =
   (token' (T.Slash ()) $> Div)
 
 relOp :: Parser Op  
-relOp = 
+relOp =
+  (token' (T.BangEqual ())  $> NotEqual) <|>
   (token' (T.EqualEqual ()) $> Equal) <|>
   (token' (T.Greater ()) $> Greater) <|>
   (token' (T.GreaterEqual ()) $> GreaterEqual) <|>

@@ -11,6 +11,7 @@ data Op =
   | Mult 
   | Div 
   | Equal 
+  | NotEqual
   | Greater 
   | GreaterEqual 
   | Less 
@@ -23,6 +24,7 @@ instance Show Op where
   show Mult         = "*"
   show Div          = "/"
   show Equal        = "=="
+  show NotEqual     = "!="
   show Greater      = ">"
   show GreaterEqual = ">="
   show Less         = "<"
