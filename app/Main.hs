@@ -35,7 +35,10 @@ main = do
             exitFailure
 
 handleParseResult :: Either LoxParseError (Exp SourcePos) -> IO ()
-handleParseResult parseRes = either (hPutStrLn stderr . show) (putStrLn . show) parseRes
+handleParseResult = 
+  either 
+    (\e -> (hPutStrLn stderr $ show e) >> exitWith (ExitFailure 65)) 
+    (putStrLn . show)
 
 lexTokens :: [LexResult] -> [Token SourcePos]
 lexTokens res = [ t | (LexToken t) <- res]
