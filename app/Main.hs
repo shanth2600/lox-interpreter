@@ -11,7 +11,7 @@ import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBufferi
 import Lexer
 import Parser (expr, parseTokens)
 import Text.Parsec (ParseError, SourcePos)
-import AST (SomeExp)
+import AST
 
 main :: IO ()
 main = do
@@ -34,7 +34,7 @@ main = do
             hPutStrLn stderr "Usage: ./your_program.sh tokenize <filename>"
             exitFailure
 
-handleParseResult :: Either ParseError (SomeExp SourcePos) -> IO ()
+handleParseResult :: Either ParseError (Exp SourcePos) -> IO ()
 handleParseResult parseRes = either (hPutStrLn stderr . show) (putStrLn . show) parseRes
 
 lexTokens :: [LexResult] -> [Token SourcePos]

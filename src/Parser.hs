@@ -15,22 +15,22 @@ import Text.Read (readMaybe)
 
 type Parser = Parsec [T.Token SourcePos] ()
 
-expr :: Parser (SomeExp SourcePos)
+expr :: Parser (Exp SourcePos)
 expr = 
-  exprInt <|> 
-  (SomeExp <$> eBool) <|> 
-  (SomeExp <$> eNil) <|>
-  (SomeExp <$> eFloat) <|>
-  (SomeExp <$> eString) <|>
-  (SomeExp <$> eNot) <|>
-  (SomeExp <$> eNegExpInt) <|>
-  (SomeExp <$> eNegExpFloat) <|>
+  exprInt      <|> 
+  eBool        <|> 
+  eNil         <|>
+  eFloat       <|>
+  eString      <|>
+  eNot         <|>
+  eNegExpInt   <|>
+  eNegExpFloat <|>
   eGroup
 
-exprInt :: Parser (SomeExp SourcePos)
-exprInt = SomeExp <$> ((try numBinOp) <|> eInt)
+exprInt :: Parser (Exp SourcePos)
+exprInt = (try numBinOp) <|> eInt
 
-numBinOp :: Parser (Exp SourcePos Int)
+numBinOp :: Parser (Exp SourcePos)
 numBinOp = do
   e1 <- eInt
   op' <- op
@@ -49,39 +49,39 @@ op =
   (token' (T.Less ()) $> Less) <|>
   (token' (T.LessEqual ()) $> LessEqual)
 
-eString :: Parser (Exp SourcePos String)
+eString :: Parser (Exp SourcePos)
 eString =  token show T.tokPos getStr
   where
     getStr (T.LString p str) = Just $ EString p str
     getStr _ = Nothing
 
-eGroup :: Parser (SomeExp SourcePos)    
+eGroup :: Parser (Exp SourcePos)    
 eGroup = do
-  (T.LeftParen p) <- token' $ T.LeftParen ()
-  (SomeExp e) <- expr
-  (T.RightParen p) <- token' $ T.RightParen ()
-  pure $ SomeExp $ EGroup p e
+  lp <- token' $ T.LeftParen ()
+  e <- expr
+  _ <- token' $ T.RightParen ()
+  pure $ EGroup (T.tokPos lp) e
 
-eNot :: Parser (Exp SourcePos Bool)
+eNot :: Parser (Exp SourcePos)
 eNot = do
   t <- token' $ T.Bang ()
   b <- try eBool <|> eNot
   pure $ ENot (T.tokPos t) b
 
-eNegExpInt :: Parser (Exp SourcePos Int)
+eNegExpInt :: Parser (Exp SourcePos)
 eNegExpInt = do
   m <- token' $ T.Minus ()
   num <- try eInt
   pure $ ENeg (T.tokPos m) num
 
-eNegExpFloat :: Parser (Exp SourcePos Float)
+eNegExpFloat :: Parser (Exp SourcePos)
 eNegExpFloat = do
   m <- token' $ T.Minus ()
   num <- try eFloat
   pure $ ENeg (T.tokPos m) num
 
 
-eInt :: Parser (Exp SourcePos Int)
+eInt :: Parser (Exp SourcePos)
 eInt = token show T.tokPos getInt
   where
     getInt (T.LNumber p nStr) = 
@@ -93,27 +93,27 @@ eInt = token show T.tokPos getInt
         _     -> Nothing
     getInt _                  = Nothing
 
-eFloat :: Parser (Exp SourcePos Float)
-eFloat = token show T.tokPos getInt
+eFloat :: Parser (Exp SourcePos)
+eFloat = token show T.tokPos getFloat
   where
-    getInt (T.LNumber p nStr) = 
+    getFloat (T.LNumber p nStr) = 
       case splitOn "." nStr of
         [int,dec] -> 
           case ((map readMaybe [int,dec]) :: [Maybe Int]) of
             [Just int',Just dec'] ->
              return $ EFloat p int' dec'
         _     -> Nothing
-    getInt _                  = Nothing
+    getFloat _                  = Nothing
 
 reserved' :: String -> Parser (SourcePos, String)
 reserved' rsvd = do 
-  (T.Reserved n _) <- token' $ T.Reserved () rsvd 
-  return (n,rsvd)
+  t <- token' $ T.Reserved () rsvd 
+  return (T.tokPos t, rsvd)
 
-eNil :: Parser (Exp SourcePos a)
+eNil :: Parser (Exp SourcePos)
 eNil = ENil <$> (fst <$> reserved' "nil")
 
-eBool :: Parser (Exp SourcePos Bool)    
+eBool :: Parser (Exp SourcePos)    
 eBool = do 
   (n,b) <- (reserved' "true") <|> (reserved' "false")
   pure $ EBool n (litToBool b)
@@ -136,6 +136,6 @@ testParse str = either (error . show) id (runParser (token' (T.EOF ())) () "" le
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
-parseTokens :: [T.Token SourcePos] -> Either ParseError (SomeExp SourcePos)
+parseTokens :: [T.Token SourcePos] -> Either ParseError (Exp SourcePos)
 parseTokens = runParser expr () ""
 

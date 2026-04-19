@@ -106,7 +106,7 @@ tokensLine :: HasCallStack => Parser [LexResult]
 tokensLine = do
   _      <- many space 
   tokens <- manyTill (token' <* many space) 
-           (lookAhead (try (void comment <|> endOfLine)))
+                     (lookAhead (try (void comment <|> endOfLine)))
   _      <- manyTill anyChar (lookAhead endOfLine)
   pure tokens
   where
@@ -117,7 +117,7 @@ tokensLine = do
 tokens' :: HasCallStack => Parser [LexResult]
 tokens' =
   (concat <$> (sepBy tokensLine newline)) <> 
-    (eof >> getPosition >>= \p -> pure [LexToken (EOF p)])
+    (eof >> (:[]) . LexToken . EOF <$> getPosition)
 
 
 
