@@ -1,12 +1,13 @@
 module Interp where
 
-import AST ( Exp (..), Op (..))
+import AST ( Exp (..), Op (..), displayFloat)
 import Text.Parsec (SourcePos)
 import Parser (testParse)
 
 data Val = 
     VInt Int
   | VBool Bool
+  | VFloat String
   | VNil
   | VString String
   deriving Eq
@@ -17,10 +18,12 @@ instance Show Val where
   show (VBool False) = "false"
   show (VNil)        = "nil"
   show (VString str) = str
+  show (VFloat str)  = str
 
 eval :: Exp SourcePos -> Val
 eval (ENil _)            = VNil
 eval (EInt _ n)          = VInt n
+eval f@(EFloat {})       = VFloat (displayFloat f)
 eval (EBool _ b)         = VBool b
 eval (EString _ str)     = VString str
 eval (ENot _ e)          = 
