@@ -29,7 +29,8 @@ eval (EString _ str)     = VString str
 eval (ENot _ e)          = 
   case eval e of
     VBool b -> VBool $ not b
-    _       -> error "type error"
+    VInt n  -> VBool (n > 0)
+    _      -> error "type error"
 eval (ENeg _ n)          = case eval n of
   VInt n' -> VInt (- n')
 eval (EGroup _ e)        = eval e
