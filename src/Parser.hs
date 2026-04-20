@@ -34,8 +34,7 @@ type Parser = Parsec [T.Token SourcePos] ()
 expr :: Parser ExpS
 expr =
   arithAddExp     <|>
-  eFloat          <|>
-  eInt            <|> 
+  eNum            <|>
   eBool           <|> 
   eNil            <|>
   eString         <|>
@@ -48,7 +47,7 @@ binOperand :: Parser ExpS
 binOperand =
   try eNegExp <|>
   eString     <|>
-  numLit      <|>
+  eNum      <|>
   eGroup
  
 
@@ -133,32 +132,12 @@ eNegExp = do
 --   num <- try eFloat
 --   pure $ ENeg (T.tokPos m) num
 
-numLit :: Parser ExpS
-numLit = eInt <|> eFloat
 
-eInt :: Parser ExpS
-eInt = token show T.tokPos getInt
+eNum :: Parser ExpS
+eNum = token show T.tokPos getNum
   where
-    getInt (T.LNumber p nStr) = 
-      case splitOn "." nStr of
-        [int] -> 
-          case readMaybe int of
-            Nothing -> error ("cannot read int: " ++ (show int))
-            Just i -> return $ EInt p i
-        _     -> Nothing
-    getInt _                  = Nothing
-
-eFloat :: Parser ExpS
-eFloat = token show T.tokPos getFloat
-  where
-    getFloat (T.LNumber p nStr) = 
-      case splitOn "." nStr of
-        [int,dec] -> 
-          case ((map readMaybe [int,dec]) :: [Maybe Int]) of
-            [Just int',Just dec'] ->
-             return $ EFloat p int' dec'
-        _     -> Nothing
-    getFloat _                  = Nothing
+    getNum (T.LNumber p nStr) = read nStr
+    getNum _                  = Nothing
 
 reserved' :: String -> Parser (SourcePos, String)
 reserved' rsvd = do 
