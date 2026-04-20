@@ -9,10 +9,10 @@ import System.Exit (exitWith, exitFailure, ExitCode(ExitSuccess, ExitFailure), e
 import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBuffering), readFile)
 
 import Lexer
-import Parser (expr, parseTokens, LoxParseError)
+import Parser (expr, parseTokens, LoxParseError, parseProgram)
 import Text.Parsec (ParseError, SourcePos)
 import AST
-import Interp (eval)
+import Interp (eval, interp)
 
 main :: IO ()
 main = do
@@ -26,6 +26,7 @@ main = do
             fileContents <- readFile filename
             let lexResults = tokenize filename fileContents
             let parseResult = parseTokens $ lexTokens $ lexResults
+            let parseProgResult = parseProgram $ lexTokens $ lexResults
             case command of
                 "tokenize" -> handleLexResult lexResults
                 "parse"    -> handleParseResult $ parseResult
@@ -33,6 +34,10 @@ main = do
                   case parseResult of
                     Left _ -> exitWith (ExitFailure 70)
                     Right ast -> eval ast
+                "run"      ->
+                  case parseProgResult of
+                    Left _ -> exitWith (ExitFailure 65)
+                    Right ast -> interp ast
                 _          -> hPutStrLn stderr ("Unknown command: " ++ command) >>
                               exitFailure
         _ -> do

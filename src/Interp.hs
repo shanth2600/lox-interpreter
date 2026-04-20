@@ -1,6 +1,6 @@
 module Interp where
 
-import AST ( Exp (..), Op (..))
+import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
 import Parser (testParse)
 import Data.List.Split (splitOn)
@@ -114,6 +114,11 @@ runEval (EBinOp p op e1 e2) = do
 
 eval :: Exp SourcePos -> IO ()
 eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
+
+interp :: [Statement SourcePos] -> IO ()
+interp (st:sts) =
+  case st of
+    (Print e) -> putStrLn (show e) >> interp sts
 
 
 testEval :: String -> String    

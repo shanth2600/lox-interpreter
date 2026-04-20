@@ -31,6 +31,11 @@ instance Show LoxParseError where
 
 type Parser = Parsec [T.Token SourcePos] ()
 
+statement' :: Parser (Statement SourcePos)
+statement' = do
+  _ <- reserved' "print"
+  Print <$> expr
+
 expr :: Parser ExpS
 expr =
   arithAddExp     <|>
@@ -127,11 +132,6 @@ eNegExp = do
   num <- try (eNum <|> eGroup)
   pure $ ENeg (T.tokPos m) num
 
--- eNegExpFloat :: Parser ExpS
--- eNegExpFloat = do
---   m <- token' $ T.Minus ()
---   num <- try eFloat
---   pure $ ENeg (T.tokPos m) num
 
 
 eNum :: Parser ExpS
@@ -173,6 +173,9 @@ testParse str = either (error . show) id (runParser (expr) () "" lexTokens)
 
 parseTokens :: [T.Token SourcePos] -> Either LoxParseError ExpS
 parseTokens tks = mapLeft toLoxParseError (runParser expr () "" tks)
+
+parseProgram :: [T.Token SourcePos] -> Either LoxParseError [Statement SourcePos]
+parseProgram tks = mapLeft toLoxParseError (runParser (many statement') () "" tks)
 
 -- toLoxParseError :: ParseError ->
 toLoxParseError pErr = 

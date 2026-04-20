@@ -33,7 +33,9 @@ instance Show Op where
   show LessEqual    = "<="
 
   
-  
+data Statement n =
+  Print (Exp n)
+  deriving Show
 
 data Exp n where
   ENum    :: n -> Float -> Exp n
