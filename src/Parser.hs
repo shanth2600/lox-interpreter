@@ -45,8 +45,7 @@ assmt :: Parser (Statement SourcePos)
 assmt = do
   _ <- reserved' "var"
   (EIdent p id') <- eIdent
-  _ <- token' (T.Equal ())
-  e <- expr
+  e <- ((token' (T.Equal ()) *> expr) <|> pure (ENil p))
   return $ Assmt p id' e
 
 expr :: Parser ExpS
