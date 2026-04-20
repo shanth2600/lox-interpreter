@@ -72,7 +72,7 @@ instance Show (Exp a) where
 
 displayNum :: Float -> String 
 displayNum n
-  | '.' `notElem` nStr = nStr
+  | '.' `notElem` nStr = nStr ++ ".0"
   | otherwise          = 
     case splitOn "." nStr of
       [int,dec] ->
