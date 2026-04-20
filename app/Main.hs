@@ -32,7 +32,7 @@ main = do
                 "evaluate" ->
                   case parseResult of
                     Left _ -> error "parse error" 
-                    Right ast -> putStrLn $ show $ eval ast
+                    Right ast -> eval ast
                 _          -> hPutStrLn stderr ("Unknown command: " ++ command) >>
                               exitFailure
         _ -> do
