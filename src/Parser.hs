@@ -46,8 +46,9 @@ expr =
 binOperand :: Parser ExpS
 binOperand =
   try eNegExp <|>
+  eBool       <|>
   eString     <|>
-  eNum      <|>
+  eNum        <|>
   eGroup
  
 
