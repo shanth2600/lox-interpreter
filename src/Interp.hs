@@ -116,6 +116,7 @@ eval :: Exp SourcePos -> IO ()
 eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
 
 interp :: [Statement SourcePos] -> IO ()
+interp []       = return ()
 interp (st:sts) =
   case st of
     (Print e) -> putStrLn (show e) >> interp sts
