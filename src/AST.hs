@@ -71,13 +71,10 @@ instance Show (Exp a) where
   show (ENil _ )           = "nil"
 
 displayNum :: Float -> String 
-displayNum n
-  | '.' `notElem` nStr = nStr ++ ".0"
-  | otherwise          = 
-    case splitOn "." nStr of
+displayNum n = case splitOn "." nStr of
       [int,dec] ->
         if dec == "0"
-          then int
+          then int  ++ ".0"
           else intercalate "." [int, truncatedDec dec]
       _         -> error $ printf "malform number: (%s)" nStr
   where
