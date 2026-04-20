@@ -21,7 +21,7 @@ data EvalError = EvalError SourcePos String
 
 instance Show EvalError where
   show (EvalError p expected) = 
-    printf "Operand must be a %s.\n[line %d]" expected (sourceLine p)
+    printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
 
 data Val a = 
     VNum a Float
@@ -59,7 +59,7 @@ displayNum n = case splitOn "." nStr of
         if dec == "0"
           then int
           else intercalate "." [int, truncatedDec dec]
-      _         -> error $ printf "malform number: (%s)" nStr  
+      _         -> error $ printf "malformed number: (%s)" nStr  
   where
     nStr = show n
     truncatedDec dec = 
@@ -80,12 +80,12 @@ runEval (ENot p e)          = do
     VBool p b -> return $  VBool p $ not b
     VNum p n  -> return $  VBool p (n == 0)
     VNil p    -> return $  VBool p True
-    _      -> throwEvalErr p "bool"
+    _      -> throwEvalErr p "a bool"
 runEval (ENeg p n)          = do
   vNum <- runEval n
   case vNum of
     VNum _ n' -> return $ VNum p (- n')
-    _ -> throwEvalErr p "number"
+    _ -> throwEvalErr p "a number"
 runEval (EGroup _ e)        = runEval e
 runEval (EBinOp p op e1 e2) = do
   v1 <- runEval e1
@@ -94,16 +94,17 @@ runEval (EBinOp p op e1 e2) = do
     (Equal, v1, v2) -> return $ VBool (valPos v1) (v1 == v2)
     (NotEqual, v1, v2) -> return $ VBool (valPos v1) (v1 /= v2)
     (Plus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' + v2')
+    (Plus, (VString p v1'), (VString _ v2')) -> return $ VString p (v1' ++ v2')
+    (Plus, _, _) -> throwEvalErr p "two numbers or two strings"
     (Minus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' - v2')
     (Mult, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' * v2')
-    (Mult, _, _) -> throwEvalErr p "number"
+    (Mult, _, _) -> throwEvalErr p "a number"
     (Div, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' / v2')
-    (Div, _, _) -> throwEvalErr p "number"
+    (Div, _, _) -> throwEvalErr p "a number"
     (Greater, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' > v2')
     (Less, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' < v2')
     (LessEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' <= v2')
     (GreaterEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' >= v2')
-    (Plus, (VString p v1'), (VString _ v2')) -> return $ VString p (v1' ++ v2')
 
 
 eval :: Exp SourcePos -> IO ()
