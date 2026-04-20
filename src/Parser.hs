@@ -1,6 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 module Parser where
 
+import Lib
+
 import Text.Parsec
 import Text.Parsec.Pos
 import Text.Parsec.Expr
@@ -20,7 +22,6 @@ import Data.Either.Extra (mapLeft)
 
 type ExpS = Exp SourcePos
 
-type LineNumber = Int
 
 data LoxParseError = LoxParseError LineNumber String String
 
@@ -35,7 +36,18 @@ statement' :: Parser (Statement SourcePos)
 statement' = ((do
   _ <- reserved' "print"
   Print <$> getPosition <*> expr) <|>
-  ExpSt <$> getPosition <*> expr) <* token' (T.Semicolon ())
+  try assmt <|>
+  ExpSt <$> getPosition <*> expr) 
+    <* token' (T.Semicolon ())
+
+
+assmt :: Parser (Statement SourcePos)
+assmt = do
+  _ <- reserved' "var"
+  (EIdent p id') <- eIdent
+  _ <- token' (T.Equal ())
+  e <- expr
+  return $ Assmt p id' e
 
 expr :: Parser ExpS
 expr =
@@ -43,6 +55,7 @@ expr =
   eNum            <|>
   eBool           <|> 
   eNil            <|>
+  eIdent          <|>
   eString         <|>
   eNot            <|>
   eNegExp         <|>
@@ -53,6 +66,7 @@ binOperand :: Parser ExpS
 binOperand =
   try eNegExp <|>
   eBool       <|>
+  eIdent      <|>
   eString     <|>
   eNum        <|>
   eGroup
@@ -114,6 +128,12 @@ eString =  token show T.tokPos getStr
   where
     getStr (T.LString p str) = Just $ EString p str
     getStr _ = Nothing
+
+eIdent :: Parser ExpS
+eIdent =  token show T.tokPos getId
+  where
+    getId (T.Ident p id') = Just $ EIdent p id'
+    getId _ = Nothing
 
 eGroup :: Parser ExpS    
 eGroup = do

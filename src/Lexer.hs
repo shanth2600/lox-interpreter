@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 module Lexer (LexResult (..), Token (..), tokenize) where
 
+import Lib
 import Text.Parsec
 import Token
 import System.Exit (die)
@@ -11,7 +12,6 @@ import Text.Printf (printf)
 import Control.Monad (void)
 import GHC.Stack (HasCallStack)
 
-type LineNumber = Int
 
 
 

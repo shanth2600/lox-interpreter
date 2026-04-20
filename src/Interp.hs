@@ -1,5 +1,7 @@
 module Interp where
 
+import Lib
+
 import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
@@ -7,21 +9,54 @@ import Data.List.Split (splitOn)
 import Data.List (dropWhileEnd, intercalate)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
-import Control.Monad.Except (Except, runExcept)
+import Control.Monad.Except (Except, runExcept, ExceptT, runExceptT)
 import System.Exit (die, exitWith, ExitCode (..))
 import Control.Monad.Error.Class (throwError)
 import System.IO (hPutStrLn, stderr)
+import qualified Data.Map as M
+import Control.Monad.State.Strict (State, runState, evalState)
+import Control.Monad.State (modify, MonadIO (liftIO))
+import Data.Functor (($>))
+import Control.Monad.State.Strict (StateT)
+import Control.Monad.State.Strict (evalStateT)
+import Control.Monad.State.Strict (gets)
 
-type LineNumber = Int
 
-type Eval = Except EvalError
+-- data InterpError = VarNotFound SourcePos Ident
 
-data EvalError = EvalError SourcePos String
+data EvalError = 
+    EvalError SourcePos String
+  | VarNotFound SourcePos Ident
   deriving Eq
 
 instance Show EvalError where
   show (EvalError p expected) = 
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
+  show (VarNotFound p var) = 
+    printf "Variable not found %s\n[line %d]" var (sourceLine p)
+
+type Env = M.Map Ident (Val SourcePos)
+
+
+type Interp a = ExceptT EvalError (StateT Env IO) a
+
+throwEvalErr :: SourcePos -> String -> Interp a
+throwEvalErr p s = throwError $ EvalError p s
+
+throwVarError :: SourcePos -> Ident -> Interp a
+throwVarError p id' = throwError $ VarNotFound p id'
+
+addBinding :: Ident -> Val SourcePos -> Interp ()
+addBinding id' = modify . M.insert id'
+
+lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
+lookupVar p id' = do
+  res <- gets (M.lookup id')
+  case res of
+    Just val -> return val
+    _        -> throwVarError p id'
+
+
 
 data Val a = 
     VNum a Float
@@ -66,10 +101,9 @@ displayNum n = case splitOn "." nStr of
       let dec' = dropWhileEnd (== '0') dec
       in if null dec' then "0" else dec'
 
-throwEvalErr :: SourcePos -> String -> Eval a
-throwEvalErr p s = throwError $ EvalError p s
 
-runEval :: Exp SourcePos -> Eval (Val SourcePos)
+runEval :: Exp SourcePos -> Interp (Val SourcePos)
+runEval (EIdent p id')      = lookupVar p id'
 runEval (ENil p)            = return $ VNil p
 runEval (ENum p n)          = return $ VNum p n
 runEval (EBool p b)         = return $ VBool p b
@@ -113,24 +147,35 @@ runEval (EBinOp p op e1 e2) = do
 
 
 eval :: Exp SourcePos -> IO ()
-eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
-
-evalRet :: Exp SourcePos -> IO (Val SourcePos)
-evalRet exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) return (runExcept $ runEval exp)
-
-interp :: [Statement SourcePos] -> IO ()
-interp = mapM_ interpStatement
-
-interpStatement :: Statement SourcePos -> IO ()
-interpStatement (Print _ e) = 
-  evalRet e >>= putStrLn . show
-interpStatement (ExpSt _ e) = 
-  evalRet e >> return ()
+eval exp =
+  (flip evalStateT (M.empty) . runExceptT $ runEval exp) >>=
+    either 
+      (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
+      (putStrLn . show)
       
 
 
-testEval :: String -> String    
-testEval = either show show . runExcept . runEval . testParse
+interp :: [Statement SourcePos] -> IO ()
+interp sts = 
+  (flip evalStateT (M.empty) . runExceptT $ mapM_ interpStatement sts) >>=
+    either 
+      (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
+      return
+
+  
+
+interpStatement :: Statement SourcePos -> Interp ()
+interpStatement (Print _ e) = 
+  runEval e >>= liftIO . putStrLn . show
+interpStatement (ExpSt _ e) = 
+  runEval e $> ()
+interpStatement (Assmt _ id' e) =
+  (runEval e >>= addBinding id') $> ()
+      
+
+
+testEval :: String -> IO ()
+testEval = eval . testParse
 
 testInterp :: String -> IO ()
-testInterp = interp . testProgParse
+testInterp =  interp . testProgParse
