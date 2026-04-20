@@ -10,6 +10,7 @@ import Text.Parsec.Pos (sourceLine)
 import Control.Monad.Except (Except, runExcept)
 import System.Exit (die, exitWith, ExitCode (..))
 import Control.Monad.Error.Class (throwError)
+import System.IO (hPutStrLn, stderr)
 
 type LineNumber = Int
 
@@ -98,7 +99,7 @@ runEval (EBinOp _ op e1 e2) = do
 
 
 eval :: Exp SourcePos -> IO ()
-eval exp = either (\e -> (die . show $ e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
+eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
 
 
 testEval :: String -> String    
