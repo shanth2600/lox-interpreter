@@ -59,7 +59,7 @@ expPos (ENil    n)       = n
 
 instance Show (Exp a) where
   show :: Exp n -> String
-  show (ENum p n)          = displayFloat n
+  show (ENum _ n)          = displayNum n
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"
@@ -70,13 +70,15 @@ instance Show (Exp a) where
   show (ENeg _ e)          = printf "(- %s)" (show e)
   show (ENil _ )           = "nil"
 
-displayFloat :: Int -> String 
-displayFloat n
+displayNum :: Float -> String 
+displayNum n
   | '.' `notElem` nStr = nStr
   | otherwise          = 
     case splitOn "." nStr of
       [int,dec] ->
-       intercalate "." [show int, truncatedDec dec]
+        if dec == "0"
+          then int
+          else intercalate "." [show int, truncatedDec dec]
       _         -> error $ printf "malform number: (%s)" nStr
   where
     nStr = show n

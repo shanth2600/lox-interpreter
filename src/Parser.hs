@@ -123,7 +123,7 @@ eNot = do
 eNegExp :: Parser ExpS
 eNegExp = do
   m <- token' $ T.Minus ()
-  num <- try (eFloat <|> eInt <|> eGroup)
+  num <- try (eNum <|> eGroup)
   pure $ ENeg (T.tokPos m) num
 
 -- eNegExpFloat :: Parser ExpS
@@ -136,7 +136,7 @@ eNegExp = do
 eNum :: Parser ExpS
 eNum = token show T.tokPos getNum
   where
-    getNum (T.LNumber p nStr) = read nStr
+    getNum (T.LNumber p nStr) = Just $ ENum p (read nStr)
     getNum _                  = Nothing
 
 reserved' :: String -> Parser (SourcePos, String)
