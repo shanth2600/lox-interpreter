@@ -119,11 +119,12 @@ evalRet :: Exp SourcePos -> IO (Val SourcePos)
 evalRet exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) return (runExcept $ runEval exp)
 
 interp :: [Statement SourcePos] -> IO ()
-interp []       = return ()
-interp (st:sts) =
-  case st of
-    (Print e) ->
-      evalRet e >>= putStrLn . show >> interp sts
+interp = mapM_ interpStatement
+
+interpStatement :: Statement SourcePos -> IO ()
+interpStatement (Print e) = 
+  evalRet e >>= putStrLn . show
+      
 
 
 testEval :: String -> String    
