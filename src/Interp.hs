@@ -8,7 +8,7 @@ import Data.List (dropWhileEnd, intercalate)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
 import Control.Monad.Except (Except, runExcept)
-import System.Exit (die)
+import System.Exit (die, exitWith, ExitCode (..))
 import Control.Monad.Error.Class (throwError)
 
 type LineNumber = Int
@@ -98,7 +98,7 @@ runEval (EBinOp _ op e1 e2) = do
 
 
 eval :: Exp SourcePos -> IO ()
-eval exp = either (die . show) (putStrLn . show) (runExcept $ runEval exp)
+eval exp = either (\e -> (die . show $ e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
 
 
 testEval :: String -> String    

@@ -31,7 +31,7 @@ main = do
                 "parse"    -> handleParseResult $ parseResult
                 "evaluate" ->
                   case parseResult of
-                    Left _ -> error "parse error" 
+                    Left _ -> exitWith (ExitFailure 70)
                     Right ast -> eval ast
                 _          -> hPutStrLn stderr ("Unknown command: " ++ command) >>
                               exitFailure
