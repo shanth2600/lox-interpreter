@@ -34,7 +34,7 @@ type Parser = Parsec [T.Token SourcePos] ()
 statement' :: Parser (Statement SourcePos)
 statement' = do
   _ <- reserved' "print"
-  Print <$> expr
+  Print <$> expr <* token' (T.Semicolon ())
 
 expr :: Parser ExpS
 expr =
