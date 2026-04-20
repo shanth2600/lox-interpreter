@@ -97,6 +97,7 @@ runEval (EBinOp p op e1 e2) = do
     (Plus, (VString p v1'), (VString _ v2')) -> return $ VString p (v1' ++ v2')
     (Plus, _, _) -> throwEvalErr p "two numbers or two strings"
     (Minus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' - v2')
+    (Minus, _, _) -> throwEvalErr p "a number"
     (Mult, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' * v2')
     (Mult, _, _) -> throwEvalErr p "a number"
     (Div, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' / v2')
