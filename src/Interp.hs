@@ -33,7 +33,7 @@ instance Show EvalError where
   show (EvalError p expected) = 
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
   show (VarNotFound p var) = 
-    printf "Variable not found %s\n[line %d]" var (sourceLine p)
+    printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
 
 type Env = M.Map Ident (Val SourcePos)
 
