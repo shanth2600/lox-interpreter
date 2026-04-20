@@ -58,6 +58,10 @@ eval (EBinOp _ op e1 e2) =
     (Minus, (VNum v1'), (VNum v2')) -> VNum (v1' - v2')
     (Mult, (VNum v1'), (VNum v2')) -> VNum (v1' * v2')
     (Div, (VNum v1'), (VNum v2')) -> VNum (v1' / v2')
+    (Greater, (VNum v1'), (VNum v2')) -> VBool (v1' > v2')
+    (Less, (VNum v1'), (VNum v2')) -> VBool (v1' < v2')
+    (LessEqual, (VNum v1'), (VNum v2')) -> VBool (v1' <= v2')
+    (GreaterEqual, (VNum v1'), (VNum v2')) -> VBool (v1' >= v2')
     (Plus, (VString v1'), (VString v2')) -> VString (v1' ++ v2')
 
 
