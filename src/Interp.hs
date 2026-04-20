@@ -55,6 +55,7 @@ eval (EBinOp _ op e1 e2) =
       v2 = eval e2
   in case (op, v1, v2) of
     (Equal, v1, v2) -> VBool (v1 == v2)
+    (NotEqual, v1, v2) -> VBool (v1 /= v2)
     (Plus, (VNum v1'), (VNum v2')) -> VNum (v1' + v2')
     (Minus, (VNum v1'), (VNum v2')) -> VNum (v1' - v2')
     (Mult, (VNum v1'), (VNum v2')) -> VNum (v1' * v2')
