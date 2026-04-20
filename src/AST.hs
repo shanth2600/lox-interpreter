@@ -34,7 +34,8 @@ instance Show Op where
 
   
 data Statement n =
-  Print (Exp n)
+    Print n (Exp n)
+  | ExpSt n (Exp n)
   deriving Show
 
 data Exp n where

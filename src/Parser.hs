@@ -32,9 +32,10 @@ instance Show LoxParseError where
 type Parser = Parsec [T.Token SourcePos] ()
 
 statement' :: Parser (Statement SourcePos)
-statement' = do
+statement' = ((do
   _ <- reserved' "print"
-  Print <$> expr <* token' (T.Semicolon ())
+  Print <$> getPosition <*> expr) <|>
+  ExpSt <$> getPosition <*> expr) <* token' (T.Semicolon ())
 
 expr :: Parser ExpS
 expr =

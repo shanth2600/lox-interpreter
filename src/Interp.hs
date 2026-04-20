@@ -122,8 +122,10 @@ interp :: [Statement SourcePos] -> IO ()
 interp = mapM_ interpStatement
 
 interpStatement :: Statement SourcePos -> IO ()
-interpStatement (Print e) = 
+interpStatement (Print _ e) = 
   evalRet e >>= putStrLn . show
+interpStatement (ExpSt _ e) = 
+  evalRet e >> return ()
       
 
 
