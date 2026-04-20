@@ -1,8 +1,11 @@
 module Interp where
 
-import AST ( Exp (..), Op (..), displayNum)
+import AST ( Exp (..), Op (..))
 import Text.Parsec (SourcePos)
 import Parser (testParse)
+import Data.List.Split (splitOn)
+import Data.List (dropWhileEnd, intercalate)
+import Text.Printf (printf)
 
 data Val = 
     VNum Float
@@ -20,6 +23,19 @@ instance Show Val where
   show (VString str) = str
   show (VFloat str)  = str
 
+displayNum :: Float -> String 
+displayNum n = case splitOn "." nStr of
+      [int,dec] ->
+        if dec == "0"
+          then int
+          else intercalate "." [int, truncatedDec dec]
+      _         -> error $ printf "malform number: (%s)" nStr  
+  where
+    nStr = show n
+    truncatedDec dec = 
+      let dec' = dropWhileEnd (== '0') dec
+      in if null dec' then "0" else dec'
+      
 eval :: Exp SourcePos -> Val
 eval (ENil _)            = VNil
 eval (ENum _ n)          = VNum n
