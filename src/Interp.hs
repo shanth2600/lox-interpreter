@@ -115,11 +115,15 @@ runEval (EBinOp p op e1 e2) = do
 eval :: Exp SourcePos -> IO ()
 eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) (putStrLn . show) (runExcept $ runEval exp)
 
+evalRet :: Exp SourcePos -> IO (Val SourcePos)
+evalRet exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70)) return (runExcept $ runEval exp)
+
 interp :: [Statement SourcePos] -> IO ()
 interp []       = return ()
 interp (st:sts) =
   case st of
-    (Print e) -> putStrLn (show e) >> interp sts
+    (Print e) ->
+      evalRet e >>= putStrLn . show >> interp sts
 
 
 testEval :: String -> String    
