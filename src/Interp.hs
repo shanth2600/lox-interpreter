@@ -2,7 +2,7 @@ module Interp where
 
 import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
-import Parser (testParse)
+import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
 import Data.List (dropWhileEnd, intercalate)
 import Text.Printf (printf)
@@ -131,3 +131,6 @@ interpStatement (ExpSt _ e) =
 
 testEval :: String -> String    
 testEval = either show show . runExcept . runEval . testParse
+
+testInterp :: String -> IO ()
+testInterp = interp . testProgParse

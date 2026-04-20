@@ -39,7 +39,7 @@ statement' = ((do
 
 expr :: Parser ExpS
 expr =
-  arithAddExp     <|>
+  arithRelExp     <|>
   eNum            <|>
   eBool           <|> 
   eNil            <|>
@@ -99,12 +99,14 @@ arithMulExp = do
   lhs' <- lookAhead lhs
   lhs `chainl1` (mulBinOp (expPos lhs'))
   where
-    lhs = arithRelExp <|> binOperand
+    lhs = binOperand
 
 arithRelExp :: Parser ExpS
 arithRelExp = do
-  opr <- (lookAhead binOperand)
-  binOperand `chainl1` (relBinOp (expPos opr))
+  lhs' <- (lookAhead lhs)
+  lhs `chainl1` (relBinOp (expPos lhs'))
+    where
+    lhs = arithAddExp <|> binOperand
 
   
 eString :: Parser ExpS
@@ -169,6 +171,11 @@ token' t = token show T.tokPos isToken
 
 testParse :: String -> Exp SourcePos
 testParse str = either (error . show) id (runParser (expr) () "" lexTokens)
+  where
+    lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
+
+testProgParse :: String -> [Statement SourcePos]
+testProgParse str = either (error . show) id (runParser (many statement') () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
