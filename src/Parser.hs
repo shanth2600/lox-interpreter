@@ -166,12 +166,12 @@ token' t = token show T.tokPos isToken
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show . toLoxParseError) id (runParser expr () "" lexTokens)
+testParse str = either (error . show . toLoxParseError) id (runParser (expr <* eof) () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
 parseTokens :: [T.Token SourcePos] -> Either LoxParseError ExpS
-parseTokens tks = mapLeft toLoxParseError (runParser expr () "" tks)
+parseTokens tks = mapLeft toLoxParseError (runParser (expr <* eof) () "" tks)
 
 -- toLoxParseError :: ParseError ->
 toLoxParseError pErr = 
