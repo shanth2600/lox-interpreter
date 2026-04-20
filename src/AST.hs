@@ -78,7 +78,7 @@ displayNum n
       [int,dec] ->
         if dec == "0"
           then int
-          else intercalate "." [show int, truncatedDec dec]
+          else intercalate "." [int, truncatedDec dec]
       _         -> error $ printf "malform number: (%s)" nStr
   where
     nStr = show n
