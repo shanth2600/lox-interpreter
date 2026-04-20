@@ -125,7 +125,8 @@ tokenize :: HasCallStack => FilePath -> String -> [LexResult]
 tokenize path str = 
   either (error . show) id (runParser tokens' () path str)
 
-  
+testLexer :: String -> [LexResult]
+testLexer str = either (error . show) id (runParser tokens' () "<input>" str)
 
 -- outputLexResult ::
 
