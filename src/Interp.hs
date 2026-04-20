@@ -29,8 +29,14 @@ data Val a =
   | VFloat a String
   | VNil a
   | VString a String
-  | VError a String
-  deriving Eq
+
+instance Eq (Val a) where
+  (VNum _ f1)    == (VNum _ f2)    = f1 == f2
+  (VBool _ b1)   == (VBool _ b2)   = b1 == b2
+  (VFloat _ f1)  == (VFloat _ f2)  = f1 == f2
+  (VNil _)       == (VNil _)       = True
+  (VString _ s1) == (VString _ s2) = s1 == s2
+  _ == _ = False
 
 valPos :: Val a -> a
 valPos (VNum a _)    = a
@@ -82,7 +88,7 @@ runEval (ENeg p n)          = do
     _ -> throwEvalErr p "number"
 runEval (EGroup _ e)        = runEval e
 runEval (EBinOp _ op e1 e2) = do
-  v1 <-  runEval e1
+  v1 <- runEval e1
   v2 <- runEval e2
   case (op, v1, v2) of
     (Equal, v1, v2) -> return $ VBool (valPos v1) (v1 == v2)
@@ -103,4 +109,4 @@ eval exp = either (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
 
 
 testEval :: String -> String    
-testEval = show . runEval . testParse
+testEval = either show show . runExcept . runEval . testParse
