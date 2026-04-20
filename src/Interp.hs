@@ -87,7 +87,7 @@ runEval (ENeg p n)          = do
     VNum _ n' -> return $ VNum p (- n')
     _ -> throwEvalErr p "number"
 runEval (EGroup _ e)        = runEval e
-runEval (EBinOp _ op e1 e2) = do
+runEval (EBinOp p op e1 e2) = do
   v1 <- runEval e1
   v2 <- runEval e2
   case (op, v1, v2) of
@@ -96,7 +96,9 @@ runEval (EBinOp _ op e1 e2) = do
     (Plus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' + v2')
     (Minus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' - v2')
     (Mult, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' * v2')
+    (Mult, _, _) -> throwEvalErr p "number"
     (Div, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' / v2')
+    (Div, _, _) -> throwEvalErr p "number"
     (Greater, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' > v2')
     (Less, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' < v2')
     (LessEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' <= v2')
