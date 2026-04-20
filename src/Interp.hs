@@ -103,9 +103,13 @@ runEval (EBinOp p op e1 e2) = do
     (Div, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' / v2')
     (Div, _, _) -> throwEvalErr p "a number"
     (Greater, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' > v2')
+    (Greater, _, _) -> throwEvalErr p "numbers"
     (Less, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' < v2')
+    (Less, _, _) -> throwEvalErr p "numbers"
     (LessEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' <= v2')
+    (LessEqual, _, _) -> throwEvalErr p "numbers"
     (GreaterEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' >= v2')
+    (GreaterEqual, _, _) -> throwEvalErr p "numbers"
 
 
 eval :: Exp SourcePos -> IO ()
