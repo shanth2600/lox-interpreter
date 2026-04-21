@@ -37,6 +37,8 @@ instance Show EvalError where
 
 type Env = M.Map Ident (Val SourcePos)
 
+type GEnv = M.Map Ident (Val SourcePos)
+
 withLocalScope :: Interp () -> Interp ()
 withLocalScope action = do
   outterScope <- get
@@ -128,10 +130,6 @@ runEval (ENeg p n)          = do
     VNum _ n' -> return $ VNum p (- n')
     _ -> throwEvalErr p "a number"
 runEval (EGroup _ e)          = runEval e
--- runEval (EAssmt p l r)        = do
---   r' <- runEval r
---   addBinding l r'
---   return $ VNil p
 runEval (EBinOp p Assign l r) = do
   r' <- runEval r
   case l of
@@ -189,10 +187,14 @@ interpStatement (ExpSt _ e) =
   runEval e $> ()
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
-interpStatement (Block p sts) = do
-  _ <- withLocalScope $ do
-    (mapM interpStatement sts) >> return ()
-  return ()
+interpStatement (Block p sts) = interpBlock [] sts
+
+interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
+interpBlock localVars [] = modify (M.filterWithKey (\k _ -> k `notElem` localVars))
+interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
+  interpStatement decl >> interpBlock (id' : localVars) rest
+interpBlock localVars (st:rest) =
+  interpStatement st >> interpBlock localVars  rest
       
 
 
