@@ -103,7 +103,7 @@ displayNum n = case splitOn "." nStr of
 
 
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
-runEval (EIdent p id')      = lookupVar p id'
+runEval (EVar p id')        = lookupVar p id'
 runEval (ENil p)            = return $ VNil p
 runEval (ENum p n)          = return $ VNum p n
 runEval (EBool p b)         = return $ VBool p b
@@ -120,7 +120,18 @@ runEval (ENeg p n)          = do
   case vNum of
     VNum _ n' -> return $ VNum p (- n')
     _ -> throwEvalErr p "a number"
-runEval (EGroup _ e)        = runEval e
+runEval (EGroup _ e)          = runEval e
+-- runEval (EAssmt p l r)        = do
+--   r' <- runEval r
+--   addBinding l r'
+--   return $ VNil p
+runEval (EBinOp p Assign l r) = do
+  r' <- runEval r
+  case l of
+    EVar _ id' ->
+      addBinding id' r'
+    _ -> throwEvalErr p "variable"
+  return r'
 runEval (EBinOp p op e1 e2) = do
   v1 <- runEval e1
   v2 <- runEval e2
@@ -169,8 +180,8 @@ interpStatement (Print _ e) =
   runEval e >>= liftIO . putStrLn . show
 interpStatement (ExpSt _ e) = 
   runEval e $> ()
-interpStatement (Assmt _ id' e) =
-  (runEval e >>= addBinding id') $> ()
+interpStatement (VarDecl p id' e) =
+  (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
       
 
 

@@ -16,6 +16,7 @@ data Op =
   | Mult 
   | Div 
   | Equal 
+  | Assign
   | NotEqual
   | Greater 
   | GreaterEqual 
@@ -28,6 +29,7 @@ instance Show Op where
   show Minus        = "-"
   show Mult         = "*"
   show Div          = "/"
+  show Assign       = "="
   show Equal        = "=="
   show NotEqual     = "!="
   show Greater      = ">"
@@ -39,7 +41,7 @@ instance Show Op where
 data Statement n =
     Print n (Exp n)
   | ExpSt n (Exp n)
-  | Assmt n Ident (Exp n)
+  | VarDecl n Ident (Maybe (Exp n))
   deriving Show
 
 data Exp n where
@@ -49,8 +51,9 @@ data Exp n where
   EBool   :: n -> Bool -> Exp n
   EBinOp  :: n -> Op -> Exp n -> Exp n -> Exp n
   ENot    :: n -> Exp n -> Exp n
-  EIdent  :: n -> String -> Exp n
+  EVar    :: n -> Ident -> Exp n
   EGroup  :: n -> Exp n -> Exp n
+  EAssmt  :: n -> Ident -> Exp n -> Exp n
   ENil    :: n -> Exp n
 
 expPos :: Exp n -> n
@@ -58,7 +61,7 @@ expPos (ENum    n _)     = n
 expPos (EString n _)     = n
 expPos (EBool   n _)     = n
 expPos (EBinOp  n _ _ _) = n
-expPos (EIdent   n _)    = n
+expPos (EVar   n _)    = n
 expPos (EGroup   n _)    = n
 expPos (ENeg   n _)      = n
 expPos (ENot   n _)      = n
@@ -70,7 +73,7 @@ instance Show (Exp a) where
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"
-  show (EIdent _ id')      = id'
+  show (EVar _ id')      = id'
   show (EString _ str)     = str
   show (EGroup _ e)        = printf "(group %s)" (show e)
   show (ENot _ e)          = printf "(! %s)" (show e)

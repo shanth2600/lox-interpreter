@@ -36,28 +36,29 @@ statement' :: Parser (Statement SourcePos)
 statement' = ((do
   _ <- reserved' "print"
   Print <$> getPosition <*> expr) <|>
-  try assmt <|>
+  try varDecl <|>
   ExpSt <$> getPosition <*> expr) 
     <* token' (T.Semicolon ())
 
 
-assmt :: Parser (Statement SourcePos)
-assmt = do
+
+varDecl :: Parser (Statement SourcePos)
+varDecl = do
   _ <- reserved' "var"
-  (EIdent p id') <- eIdent
-  e <- ((token' (T.Equal ()) *> expr) <|> pure (ENil p))
-  return $ Assmt p id' e
+  (EVar p id') <- eVar
+  e <- ((token' (T.Equal ()) *> (Just <$> expr)) <|> pure Nothing)
+  return $ VarDecl p id' e
 
 expr :: Parser ExpS
 expr =
-  arithRelExp     <|>
-  eNum            <|>
-  eBool           <|> 
-  eNil            <|>
-  eIdent          <|>
-  eString         <|>
-  eNot            <|>
-  eNegExp         <|>
+  assmtExp <|> 
+  eNum        <|>
+  eBool       <|> 
+  eNil        <|>
+  eVar        <|>
+  eString     <|>
+  eNot        <|>
+  eNegExp     <|>
   eGroup
 
 
@@ -65,7 +66,7 @@ binOperand :: Parser ExpS
 binOperand =
   try eNegExp <|>
   eBool       <|>
-  eIdent      <|>
+  eVar        <|>
   eString     <|>
   eNum        <|>
   eGroup
@@ -79,6 +80,9 @@ mulBinOp n =  EBinOp n <$> mulOp
 
 relBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 relBinOp n =  EBinOp n <$> relOp
+
+assmtBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+assmtBinOp n =  EBinOp n <$> ((token' $ T.Equal ()) $> Assign)
 
 addOp :: Parser Op
 addOp = 
@@ -121,6 +125,13 @@ arithRelExp = do
     where
     lhs = arithAddExp <|> binOperand
 
+assmtExp :: Parser ExpS
+assmtExp = do
+  lhs' <- (lookAhead lhs)
+  lhs `chainr1` (assmtBinOp (expPos lhs'))
+    where
+    lhs = arithRelExp <|> (eVar <|> eNum)
+
   
 eString :: Parser ExpS
 eString =  token show T.tokPos getStr
@@ -128,10 +139,10 @@ eString =  token show T.tokPos getStr
     getStr (T.LString p str) = Just $ EString p str
     getStr _ = Nothing
 
-eIdent :: Parser ExpS
-eIdent =  token show T.tokPos getId
+eVar :: Parser ExpS
+eVar =  token show T.tokPos getId
   where
-    getId (T.Ident p id') = Just $ EIdent p id'
+    getId (T.Ident p id') = Just $ EVar p id'
     getId _ = Nothing
 
 eGroup :: Parser ExpS    
@@ -154,7 +165,8 @@ eNegExp = do
   num <- try (eNum <|> eGroup)
   pure $ ENeg (T.tokPos m) num
 
-
+endExp :: Parser ()
+endExp = eof <|> (void $ token' (T.Semicolon ()))
 
 eNum :: Parser ExpS
 eNum = token show T.tokPos getNum
@@ -185,6 +197,8 @@ token' t = token show T.tokPos isToken
   where
     isToken t' = if t == void t' then Just t' else Nothing
 
+eof' :: Parser ()
+eof' = void $ token' (T.EOF ())
 
 
 
@@ -204,7 +218,8 @@ parseTokens tks = mapLeft toLoxParseError (runParser expr () "" tks)
 parseProgram :: [T.Token SourcePos] -> Either LoxParseError [Statement SourcePos]
 parseProgram tks = mapLeft toLoxParseError (runParser (many statement') () "" tks)
 
--- toLoxParseError :: ParseError ->
+
+toLoxParseError :: ParseError -> LoxParseError
 toLoxParseError pErr = 
     case errorMessages (pErr) of
       (m:_) -> 
@@ -212,4 +227,3 @@ toLoxParseError pErr =
             lnNo = sourceLine $ errorPos pErr
         in LoxParseError lnNo char "Expect expression"
       [] -> error "unkown parse error at: " (show $ errorPos pErr)
-  -- error $ show $ messageString $ head $ errorMessages (pErr)
