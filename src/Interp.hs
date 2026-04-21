@@ -15,7 +15,7 @@ import Control.Monad.Error.Class (throwError)
 import System.IO (hPutStrLn, stderr)
 import qualified Data.Map as M
 import Control.Monad.State.Strict (State, runState, evalState)
-import Control.Monad.State (modify, MonadIO (liftIO))
+import Control.Monad.State (modify, MonadIO (liftIO), MonadState (get, put))
 import Data.Functor (($>))
 import Control.Monad.State.Strict (StateT)
 import Control.Monad.State.Strict (evalStateT)
@@ -36,6 +36,13 @@ instance Show EvalError where
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
 
 type Env = M.Map Ident (Val SourcePos)
+
+withLocalScope :: Interp () -> Interp ()
+withLocalScope action = do
+  outterScope <- get
+  _ <- action
+  _ <- put outterScope
+  return ()
 
 
 type Interp a = ExceptT EvalError (StateT Env IO) a
@@ -182,7 +189,7 @@ interpStatement (ExpSt _ e) =
   runEval e $> ()
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
-interpStatement (Block p sts) = mapM_ interpStatement sts
+interpStatement (Block p sts) = withLocalScope $ mapM_ interpStatement sts
       
 
 
