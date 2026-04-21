@@ -182,6 +182,7 @@ interpStatement (ExpSt _ e) =
   runEval e $> ()
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
+interpStatement (Block p sts) = mapM_ interpStatement sts
       
 
 
