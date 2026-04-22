@@ -4,6 +4,7 @@ module Interp where
 import Lib
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Env as E
+import Numeric (showFFloat)
 
 import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
@@ -103,14 +104,14 @@ valPos (VNil a)      = a
 valPos (VString a _) = a
 
 instance Show (Val a) where
-  show (VNum _ n)      = displayNum n
+  show (VNum _ n)      = displayNum $ showFFloat Nothing n ""
   show (VBool _ True)  = "true"
   show (VBool _ False) = "false"
   show (VNil _)        = "nil"
   show (VString _ str) = str
   show (VFloat _ str)  = str
 
-displayNum :: Float -> String 
+displayNum :: String -> String 
 displayNum n = case splitOn "." nStr of
       [int,dec] ->
         if dec == "0"
@@ -118,10 +119,22 @@ displayNum n = case splitOn "." nStr of
           else intercalate "." [int, truncatedDec dec]
       _         -> error $ printf "malformed number: (%s)" nStr  
   where
-    nStr = show n
+    nStr = n
     truncatedDec dec = 
       let dec' = dropWhileEnd (== '0') dec
       in if null dec' then "0" else dec'
+-- displayNum :: Float -> String 
+-- displayNum n = case splitOn "." nStr of
+--       [int,dec] ->
+--         if dec == "0"
+--           then int
+--           else intercalate "." [int, truncatedDec dec]
+--       _         -> error $ printf "malformed number: (%s)" nStr  
+--   where
+--     nStr = show n
+--     truncatedDec dec = 
+--       let dec' = dropWhileEnd (== '0') dec
+--       in if null dec' then "0" else dec'
 
 
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
