@@ -23,6 +23,7 @@ import Control.Monad.State.Strict (StateT)
 import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.State.Strict (gets)
 import Debug.Trace (trace)
+import Data.Maybe (fromMaybe)
 
 
 -- data InterpError = VarNotFound SourcePos Ident
@@ -60,6 +61,8 @@ modifyBinding id' val = do
   modify (E.popValue id')
   addBinding id' val
 
+purgeVarsFromScope :: [Ident] -> Interp ()
+purgeVarsFromScope localVars = modify (E.popValues localVars)
 
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
 lookupVar p id' = do
@@ -222,10 +225,28 @@ interpStatement (While p pred body) = go
       if(truthy pred') 
         then interpStatement body >> go
         else return ()
-  
+interpStatement (For p (init,pred,step) body) =
+  interpStatement init >> go
+  where
+    go = do
+      pred' <- runEval pred
+      if truthy pred' 
+      then 
+        interpStatement body >> 
+        runEval (step' $ predVar pred) >> go
+      else return ()
+      where
+        predVar :: Exp SourcePos -> Ident
+        predVar (EBinOp _ _ (EVar _ id') _) = id'
+        predVar (EBinOp _ _ _ (EVar _ id')) = id'
+        step' id' = fromMaybe (incr1 id') step
+        incr1 :: Ident -> Exp SourcePos
+        incr1 id' = 
+          (EBinOp p Assign (EVar p id') (EBinOp p Plus (EVar p id') (ENum p 1.0)))
+    
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
-interpBlock localVars [] = modify (E.popValues localVars)
+interpBlock localVars [] = purgeVarsFromScope localVars
 interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
   interpStatement decl >> interpBlock (id' : localVars) rest
 interpBlock localVars (st:rest) =

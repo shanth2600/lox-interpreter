@@ -49,6 +49,7 @@ data Statement n =
   | Block n [Statement n]
   | If n (Exp n) (Statement n) (Maybe (Statement n))
   | While n (Exp n) (Statement n)
+  | For n ((Statement n), (Exp n), (Maybe (Exp n))) (Statement n)
   deriving Show
 
 data Exp n where

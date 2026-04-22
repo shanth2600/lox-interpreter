@@ -34,9 +34,10 @@ type Parser = Parsec [T.Token SourcePos] ()
 
 statement' :: Parser (Statement SourcePos)
 statement' = 
-  (singleStatment <* token' (T.Semicolon ())) <|>
+  (singleStatment <* token' T.Semicolon) <|>
   ifStatement <|>
   whileLoop <|>
+  forLoop <|>
   block'
 
 singleStatment :: Parser (Statement SourcePos)
@@ -63,12 +64,26 @@ whileLoop = do
  body <- statement'
  return $ While p pred body
 
+forLoop :: Parser (Statement SourcePos)
+forLoop = do
+  (p,_) <- reserved' "for"
+  c@(init,cond,step) <- 
+    between 
+      (token' T.LeftParen)
+      (token' T.RightParen)
+      ((,,) <$> 
+        statement' <*> 
+        expr <* token' T.Semicolon  <*> 
+        optionMaybe expr)
+  body <- statement'
+  return $ For p c body
+
 block' :: Parser (Statement SourcePos)
 block' = do
-  open <- (lookAhead $ token' $ T.LeftBrace ())
+  open <- (lookAhead $ token' T.LeftBrace)
   Block (T.tokPos open) <$>
-    (between (token' $ T.LeftBrace ()) 
-             (token' $ T.RightBrace ())
+    (between (token' T.LeftBrace) 
+             (token' T.RightBrace)
              (many statement'))
 
 
@@ -77,7 +92,7 @@ varDecl :: Parser (Statement SourcePos)
 varDecl = do
   _ <- reserved' "var"
   (EVar p id') <- eVar
-  e <- ((token' (T.Equal ()) *> (Just <$> expr)) <|> pure Nothing)
+  e <- ((token' T.Equal *> (Just <$> expr)) <|> pure Nothing)
   return $ VarDecl p id' e
 
 expr :: Parser ExpS
@@ -118,26 +133,26 @@ boolBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 boolBinOp n = EBinOp n <$> boolOp
 
 assmtBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
-assmtBinOp n =  EBinOp n <$> ((token' $ T.Equal ()) $> Assign)
+assmtBinOp n =  EBinOp n <$> ((token' T.Equal) $> Assign)
 
 addOp :: Parser Op
 addOp = 
-  (token' (T.Plus ()) $> Plus) <|>
-  (token' (T.Minus ()) $> Minus)
+  (token' T.Plus $> Plus) <|>
+  (token' T.Minus $> Minus)
 
 mulOp :: Parser Op
 mulOp = 
-  (token' (T.Star ()) $> Mult) <|>
-  (token' (T.Slash ()) $> Div)
+  (token' T.Star $> Mult) <|>
+  (token' T.Slash $> Div)
 
 relOp :: Parser Op  
 relOp =
-  (token' (T.BangEqual ())  $> NotEqual) <|>
-  (token' (T.EqualEqual ()) $> Equal) <|>
-  (token' (T.Greater ()) $> Greater) <|>
-  (token' (T.GreaterEqual ()) $> GreaterEqual) <|>
-  (token' (T.Less ()) $> Less) <|>
-  (token' (T.LessEqual ()) $> LessEqual)
+  (token' T.BangEqual  $> NotEqual) <|>
+  (token' T.EqualEqual $> Equal) <|>
+  (token' T.Greater $> Greater) <|>
+  (token' T.GreaterEqual $> GreaterEqual) <|>
+  (token' T.Less $> Less) <|>
+  (token' T.LessEqual $> LessEqual)
 
 boolOp :: Parser Op
 boolOp = 
@@ -195,26 +210,26 @@ eVar =  token show T.tokPos getId
 
 eGroup :: Parser ExpS    
 eGroup = do
-  lp <- token' $ T.LeftParen ()
+  lp <- token' T.LeftParen
   e <- expr
-  _ <- token' $ T.RightParen ()
+  _ <- token' T.RightParen
   pure $ EGroup (T.tokPos lp) e
 
 eNot :: Parser ExpS
 eNot = do
-  t <- token' $ T.Bang ()
+  t <- token' T.Bang
   b <- expr
   pure $ ENot (T.tokPos t) b
 
 
 eNegExp :: Parser ExpS
 eNegExp = do
-  m <- token' $ T.Minus ()
+  m <- token' T.Minus
   num <- try (eNum <|> eGroup)
   pure $ ENeg (T.tokPos m) num
 
 endExp :: Parser ()
-endExp = eof <|> (void $ token' (T.Semicolon ()))
+endExp = eof <|> (void $ token' T.Semicolon)
 
 eNum :: Parser ExpS
 eNum = token show T.tokPos getNum
@@ -224,7 +239,7 @@ eNum = token show T.tokPos getNum
 
 reserved' :: String -> Parser (SourcePos, String)
 reserved' rsvd = do 
-  t <- token' $ T.Reserved () rsvd 
+  t <- token' $ flip T.Reserved rsvd 
   return (T.tokPos t, rsvd)
 
 eNil :: Parser ExpS
@@ -240,13 +255,13 @@ eBool = do
     litToBool "false" = False
     litToBool _       = undefined
 
-token' :: T.Token () -> Parser (T.Token SourcePos)
-token' t = token show T.tokPos isToken
+token' :: (() -> T.Token ()) -> Parser (T.Token SourcePos)
+token' t = token show T.tokPos getToken
   where
-    isToken t' = if t == void t' then Just t' else Nothing
+    getToken t' = if (t ()) == void t' then Just t' else Nothing
 
 eof' :: Parser ()
-eof' = void $ token' (T.EOF ())
+eof' = void $ token' T.EOF
 
 
 
