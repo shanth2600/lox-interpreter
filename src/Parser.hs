@@ -35,6 +35,7 @@ type Parser = Parsec [T.Token SourcePos] ()
 statement' :: Parser (Statement SourcePos)
 statement' = 
   (singleStatment <* token' (T.Semicolon ())) <|>
+  ifStatement <|>
   block'
 
 singleStatment :: Parser (Statement SourcePos)
@@ -43,6 +44,14 @@ singleStatment = (do
   Print <$> getPosition <*> expr) <|>
   try varDecl <|>
   ExpSt <$> getPosition <*> expr
+
+ifStatement :: Parser (Statement SourcePos)
+ifStatement = do
+  (p,_) <- reserved' "if"
+  pred <- eGroup
+  blk <- block'
+  return $ If p pred blk
+
 
 block' :: Parser (Statement SourcePos)
 block' = do

@@ -43,6 +43,7 @@ data Statement n =
   | ExpSt n (Exp n)
   | VarDecl n Ident (Maybe (Exp n))
   | Block n [Statement n]
+  | If n (Exp n) (Statement n)
   deriving Show
 
 data Exp n where
@@ -74,7 +75,7 @@ instance Show (Exp a) where
   show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)      = "true"
   show (EBool _ False)     = "false"
-  show (EVar _ id')      = id'
+  show (EVar _ id')        = id'
   show (EString _ str)     = str
   show (EGroup _ e)        = printf "(group %s)" (show e)
   show (ENot _ e)          = printf "(! %s)" (show e)

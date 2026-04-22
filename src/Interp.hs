@@ -192,12 +192,14 @@ interpStatement (ExpSt _ e) =
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
 interpStatement (Block p sts) = interpBlock [] sts
+interpStatement (If p pred st) = do
+  pred' <- runEval pred
+  case pred' of
+    (VBool _ b) -> if b then interpStatement st else return ()
+    _           -> throwEvalErr p "boolean"
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
-interpBlock localVars [] = do
-   modify (E.popValues localVars)
-   env <- get
-   trace (show env) (return ())
+interpBlock localVars [] = modify (E.popValues localVars)
 interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
   interpStatement decl >> interpBlock (id' : localVars) rest
 interpBlock localVars (st:rest) =
