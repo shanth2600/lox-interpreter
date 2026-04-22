@@ -94,6 +94,9 @@ binOperand =
   eString     <|>
   eNum        <|>
   eGroup
+
+-- boolOp :: SourcePos -> P
+
  
 
 addBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
@@ -104,6 +107,9 @@ mulBinOp n =  EBinOp n <$> mulOp
 
 relBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 relBinOp n =  EBinOp n <$> relOp
+
+boolBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
+boolBinOp n = EBinOp n <$> boolOp
 
 assmtBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
 assmtBinOp n =  EBinOp n <$> ((token' $ T.Equal ()) $> Assign)
@@ -127,6 +133,18 @@ relOp =
   (token' (T.Less ()) $> Less) <|>
   (token' (T.LessEqual ()) $> LessEqual)
 
+boolOp :: Parser Op
+boolOp = 
+  (reserved' "and" $> And) <|>
+  (reserved' "or" $> Or)
+
+boolExp :: Parser ExpS
+boolExp = do
+  lhs' <- (lookAhead lhs)
+  lhs `chainr1` (boolBinOp (expPos lhs'))
+    where
+    lhs = binOperand
+
 
 arithAddExp :: Parser ExpS
 arithAddExp = do
@@ -140,7 +158,7 @@ arithMulExp = do
   lhs' <- lookAhead lhs
   lhs `chainl1` (mulBinOp (expPos lhs'))
   where
-    lhs = binOperand
+    lhs = boolExp <|> binOperand
 
 arithRelExp :: Parser ExpS
 arithRelExp = do

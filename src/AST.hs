@@ -15,7 +15,9 @@ data Op =
   | Minus 
   | Mult 
   | Div 
-  | Equal 
+  | Equal
+  | And
+  | Or 
   | Assign
   | NotEqual
   | Greater 
@@ -30,6 +32,8 @@ instance Show Op where
   show Mult         = "*"
   show Div          = "/"
   show Assign       = "="
+  show And          = "and"
+  show Or           = "or"
   show Equal        = "=="
   show NotEqual     = "!="
   show Greater      = ">"

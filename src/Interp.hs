@@ -78,6 +78,11 @@ data Val a =
   | VNil a
   | VString a String
 
+truthy :: Val a -> Bool
+truthy (VBool _ False) = False
+truthy (VNil _)        = False
+truthy _               = True
+
 instance Eq (Val a) where
   (VNum _ f1)    == (VNum _ f2)    = f1 == f2
   (VBool _ b1)   == (VBool _ b2)   = b1 == b2
@@ -146,6 +151,11 @@ runEval (EBinOp p op e1 e2) = do
   v2 <- runEval e2
   case (op, v1, v2) of
     (Equal, v1, v2) -> return $ VBool (valPos v1) (v1 == v2)
+    (And, v1, v2) | truthy v1, truthy v2 -> return v1
+                  | otherwise            -> return (VBool p False)
+    (Or, v1, v2)  | truthy v1 -> return v1
+                  | truthy v2 -> return v2
+                  | otherwise -> return (VBool p False)
     (NotEqual, v1, v2) -> return $ VBool (valPos v1) (v1 /= v2)
     (Plus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' + v2')
     (Plus, (VString p v1'), (VString _ v2')) -> return $ VString p (v1' ++ v2')
@@ -194,12 +204,9 @@ interpStatement (VarDecl p id' e) =
 interpStatement (Block p sts) = interpBlock [] sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
-  case pred' of
-    (VBool _ b) -> 
-      if b 
-        then interpStatement then' 
-        else (maybe (return ()) interpStatement else')
-    _           -> throwEvalErr p "boolean"
+  if (truthy pred') 
+    then interpStatement then' 
+    else (maybe (return ()) interpStatement else')
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
 interpBlock localVars [] = modify (E.popValues localVars)
