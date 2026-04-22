@@ -77,7 +77,7 @@ guardVariableExists :: SourcePos -> Ident -> Interp ()
 guardVariableExists p id' = lookupVar p id' >> return ()
 
 data Val a = 
-    VNum a Float
+    VNum a Double
   | VBool a Bool
   | VFloat a String
   | VNil a

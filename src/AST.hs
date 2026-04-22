@@ -53,7 +53,7 @@ data Statement n =
   deriving Show
 
 data Exp n where
-  ENum     :: n -> Float -> Exp n
+  ENum     :: n -> Double -> Exp n
   ENeg     :: n -> Exp n -> Exp n
   EString  :: n -> String -> Exp n
   EBool    :: n -> Bool -> Exp n
@@ -90,7 +90,7 @@ instance Show (Exp a) where
   show (ENeg _ e)            = printf "(- %s)" (show e)
   show (ENil _ )             = "nil"
 
-displayNum :: Float -> String 
+displayNum :: Double -> String 
 displayNum n = case splitOn "." nStr of
       [int,dec] ->
         if dec == "0"
