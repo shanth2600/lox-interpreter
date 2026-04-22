@@ -19,6 +19,7 @@ import Control.Monad.Identity
 import Text.Parsec.Error (errorMessages, messageString)
 import Text.Printf (printf)
 import Data.Either.Extra (mapLeft)
+import Text.Parsec.Token (GenLanguageDef(identLetter))
 
 type ExpS = Exp SourcePos
 
@@ -97,7 +98,8 @@ varDecl = do
 
 expr :: Parser ExpS
 expr =
-  assmtExp <|> 
+  try funCall <|>
+  assmtExp    <|> 
   eNum        <|>
   eBool       <|> 
   eNil        <|>
@@ -194,6 +196,15 @@ assmtExp = do
   lhs `chainr1` (assmtBinOp (expPos lhs'))
     where
     lhs = arithRelExp <|> (eVar <|> eNum)
+
+funCall :: Parser ExpS
+funCall = do
+  (EVar p id') <- eVar
+  args <- between (token' T.LeftParen)
+                  (token' T.RightParen)
+                  (many expr)
+  return $ EFunCall p id' args
+  
 
   
 eString :: Parser ExpS

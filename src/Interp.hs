@@ -2,6 +2,7 @@
 module Interp where
 
 import Lib
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Env as E
 
 import AST ( Exp (..), Op (..), Statement (..))
@@ -129,6 +130,9 @@ runEval (ENil p)            = return $ VNil p
 runEval (ENum p n)          = return $ VNum p n
 runEval (EBool p b)         = return $ VBool p b
 runEval (EString p str)     = return $ VString p str
+runEval (EFunCall p "clock" []) = do
+  t <- liftIO $ getPOSIXTime
+  return (VNum p (realToFrac t))
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of

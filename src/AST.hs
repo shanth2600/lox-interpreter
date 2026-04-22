@@ -53,16 +53,17 @@ data Statement n =
   deriving Show
 
 data Exp n where
-  ENum    :: n -> Float -> Exp n
-  ENeg    :: n -> Exp n -> Exp n
-  EString :: n -> String -> Exp n
-  EBool   :: n -> Bool -> Exp n
-  EBinOp  :: n -> Op -> Exp n -> Exp n -> Exp n
-  ENot    :: n -> Exp n -> Exp n
-  EVar    :: n -> Ident -> Exp n
-  EGroup  :: n -> Exp n -> Exp n
-  EAssmt  :: n -> Ident -> Exp n -> Exp n
-  ENil    :: n -> Exp n
+  ENum     :: n -> Float -> Exp n
+  ENeg     :: n -> Exp n -> Exp n
+  EString  :: n -> String -> Exp n
+  EBool    :: n -> Bool -> Exp n
+  EBinOp   :: n -> Op -> Exp n -> Exp n -> Exp n
+  ENot     :: n -> Exp n -> Exp n
+  EVar     :: n -> Ident -> Exp n
+  EGroup   :: n -> Exp n -> Exp n
+  EFunCall :: n -> Ident -> [Exp n] -> Exp n
+  EAssmt   :: n -> Ident -> Exp n -> Exp n
+  ENil     :: n -> Exp n
 
 expPos :: Exp n -> n
 expPos (ENum    n _)     = n
@@ -77,16 +78,17 @@ expPos (ENil    n)       = n
 
 instance Show (Exp a) where
   show :: Exp n -> String
-  show (ENum _ n)          = displayNum n
-  show (EBinOp _ op e1 e2) = printf "(%s %s %s)" (show op) (show e1) (show e2)
-  show (EBool _ True)      = "true"
-  show (EBool _ False)     = "false"
-  show (EVar _ id')        = id'
-  show (EString _ str)     = str
-  show (EGroup _ e)        = printf "(group %s)" (show e)
-  show (ENot _ e)          = printf "(! %s)" (show e)
-  show (ENeg _ e)          = printf "(- %s)" (show e)
-  show (ENil _ )           = "nil"
+  show (ENum _ n)            = displayNum n
+  show (EFunCall _ fid args) = printf "%s(%s)" fid (intercalate "," $ map show args)
+  show (EBinOp _ op e1 e2)   = printf "(%s %s %s)" (show op) (show e1) (show e2)
+  show (EBool _ True)        = "true"
+  show (EBool _ False)       = "false"
+  show (EVar _ id')          = id'
+  show (EString _ str)       = str
+  show (EGroup _ e)          = printf "(group %s)" (show e)
+  show (ENot _ e)            = printf "(! %s)" (show e)
+  show (ENeg _ e)            = printf "(- %s)" (show e)
+  show (ENil _ )             = "nil"
 
 displayNum :: Float -> String 
 displayNum n = case splitOn "." nStr of
