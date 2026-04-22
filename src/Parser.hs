@@ -50,7 +50,10 @@ ifStatement = do
   (p,_) <- reserved' "if"
   pred <- eGroup
   then' <- statement'
-  return $ If p pred then'
+  else' <- optionMaybe $ do 
+            _ <- reserved' "else"
+            statement'
+  return $ If p pred then' else'
 
 
 block' :: Parser (Statement SourcePos)

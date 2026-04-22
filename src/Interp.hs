@@ -192,10 +192,13 @@ interpStatement (ExpSt _ e) =
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
 interpStatement (Block p sts) = interpBlock [] sts
-interpStatement (If p pred st) = do
+interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   case pred' of
-    (VBool _ b) -> if b then interpStatement st else return ()
+    (VBool _ b) -> 
+      if b 
+        then interpStatement then' 
+        else (maybe (return ()) interpStatement else')
     _           -> throwEvalErr p "boolean"
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()

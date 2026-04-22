@@ -43,7 +43,7 @@ data Statement n =
   | ExpSt n (Exp n)
   | VarDecl n Ident (Maybe (Exp n))
   | Block n [Statement n]
-  | If n (Exp n) (Statement n)
+  | If n (Exp n) (Statement n) (Maybe (Statement n))
   deriving Show
 
 data Exp n where
