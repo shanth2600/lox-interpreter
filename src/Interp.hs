@@ -233,16 +233,8 @@ interpStatement (For p (init,pred,step) body) =
       if truthy pred' 
       then 
         interpStatement body >> 
-        runEval (step' $ predVar pred) >> go
+        (maybe (return $ VNil p) runEval step) >> go
       else return ()
-      where
-        predVar :: Exp SourcePos -> Ident
-        predVar (EBinOp _ _ (EVar _ id') _) = id'
-        predVar (EBinOp _ _ _ (EVar _ id')) = id'
-        step' id' = fromMaybe (incr1 id') step
-        incr1 :: Ident -> Exp SourcePos
-        incr1 id' = 
-          (EBinOp p Assign (EVar p id') (EBinOp p Plus (EVar p id') (ENum p 1.0)))
     
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
