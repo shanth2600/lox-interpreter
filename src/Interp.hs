@@ -145,7 +145,7 @@ runEval (EBool p b)         = return $ VBool p b
 runEval (EString p str)     = return $ VString p str
 runEval (EFunCall p "clock" []) = do
   t <- liftIO $ getPOSIXTime
-  return (VNum p (fromIntegral  $ floor t))
+  return (VNum p ((fromIntegral  $ floor t)  - 10))
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of
