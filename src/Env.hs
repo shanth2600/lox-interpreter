@@ -27,3 +27,5 @@ popValue = M.adjust (snd . pop)
 
 popValues :: Ord k => [k] -> Env k v -> Env k v
 popValues ks env = foldr popValue env ks
+
+test = popValues ["x"] $ popValue "x" (pushValue "x" 2 (pushValue "x" 1 M.empty))

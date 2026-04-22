@@ -22,6 +22,7 @@ import Data.Functor (($>), (<&>))
 import Control.Monad.State.Strict (StateT)
 import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.State.Strict (gets)
+import Debug.Trace (trace)
 
 
 -- data InterpError = VarNotFound SourcePos Ident
@@ -52,6 +53,13 @@ throwVarError p id' = throwError $ VarNotFound p id'
 
 addBinding :: Ident -> Val SourcePos -> Interp ()
 addBinding id' = modify . E.pushValue id'
+
+modifyBinding :: Ident -> Val SourcePos -> Interp ()
+modifyBinding id' val = do
+  guardVariableExists (valPos val) id'
+  modify (E.popValue id')
+  addBinding id' val
+
 
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
 lookupVar p id' = do
@@ -130,8 +138,7 @@ runEval (EBinOp p Assign l r) = do
   r' <- runEval r
   case l of
     EVar p id' -> do
-      guardVariableExists p id'
-      addBinding id' r'
+      modifyBinding id' r'
     _ -> throwEvalErr p "variable"
   return r'
 runEval (EBinOp p op e1 e2) = do
@@ -187,7 +194,10 @@ interpStatement (VarDecl p id' e) =
 interpStatement (Block p sts) = interpBlock [] sts
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
-interpBlock localVars [] = modify (E.popValues localVars)
+interpBlock localVars [] = do
+   modify (E.popValues localVars)
+   env <- get
+   trace (show env) (return ())
 interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
   interpStatement decl >> interpBlock (id' : localVars) rest
 interpBlock localVars (st:rest) =
