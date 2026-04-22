@@ -66,6 +66,14 @@ modifyBinding id' val = do
 purgeVarsFromScope :: [Ident] -> Interp ()
 purgeVarsFromScope localVars = modify (E.popValues localVars)
 
+withLocalScope :: Env -> Interp a -> Interp a
+withLocalScope env action = do
+  currEnv <- get
+  put env
+  res <- action
+  put currEnv
+  return res
+
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
 lookupVar p id' = do
   res <- gets (E.peekValue id')
@@ -81,6 +89,7 @@ data Val a =
   | VBool a Bool
   | VFloat a String
   | VNil a
+  | VClosure a [Ident] (Statement a) Env
   | VString a String
 
 truthy :: Val a -> Bool
@@ -112,30 +121,16 @@ instance Show (Val a) where
   show (VFloat _ str)  = str
 
 displayNum :: String -> String 
-displayNum n = case splitOn "." nStr of
+displayNum nStr = case splitOn "." nStr of
       [int,dec] ->
         if dec == "0"
           then int
           else intercalate "." [int, truncatedDec dec]
       _         -> error $ printf "malformed number: (%s)" nStr  
   where
-    nStr = n
     truncatedDec dec = 
       let dec' = dropWhileEnd (== '0') dec
       in if null dec' then "0" else dec'
--- displayNum :: Float -> String 
--- displayNum n = case splitOn "." nStr of
---       [int,dec] ->
---         if dec == "0"
---           then int
---           else intercalate "." [int, truncatedDec dec]
---       _         -> error $ printf "malformed number: (%s)" nStr  
---   where
---     nStr = show n
---     truncatedDec dec = 
---       let dec' = dropWhileEnd (== '0') dec
---       in if null dec' then "0" else dec'
-
 
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
 runEval (EVar p id')        = lookupVar p id'
@@ -146,6 +141,13 @@ runEval (EString p str)     = return $ VString p str
 runEval (EFunCall p "clock" []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
+runEval (EFunCall p funId _) = do
+  closure <- lookupVar p funId
+  case closure of
+    (VClosure p args body env) -> do
+      (withLocalScope env $
+        interpStatement body) >> (return $ VNil p)
+    _ -> error "function not found"
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of
@@ -252,7 +254,9 @@ interpStatement (For p (init,pred,step) body) =
         interpStatement body >> 
         (maybe (return $ VNil p) runEval step) >> go
       else return ()
-    
+interpStatement (FunDecl n funId args body) = do
+  env <- get
+  addBinding funId (VClosure n args body env)
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
 interpBlock localVars [] = purgeVarsFromScope localVars

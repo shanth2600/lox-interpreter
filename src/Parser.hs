@@ -36,6 +36,7 @@ type Parser = Parsec [T.Token SourcePos] ()
 statement' :: Parser (Statement SourcePos)
 statement' = 
   (singleStatment <* token' T.Semicolon) <|>
+  funDecl <|>
   ifStatement <|>
   whileLoop <|>
   forLoop <|>
@@ -78,6 +79,19 @@ forLoop = do
         optionMaybe expr)
   body <- statement'
   return $ For p c body
+
+funDecl :: Parser (Statement SourcePos)
+funDecl = do
+  _ <- reserved' "fun"
+  (EVar p id') <- eVar
+  params <- 
+    between (token' T.LeftParen)
+            (token' T.RightParen)
+            (eVar `sepBy` (token' T.Comma))
+  body <- block'
+  return $ FunDecl p id' (unpackVarId <$> params) body
+  where
+    unpackVarId (EVar _ id') = id'
 
 block' :: Parser (Statement SourcePos)
 block' = do
