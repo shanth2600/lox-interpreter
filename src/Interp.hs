@@ -1,6 +1,8 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 module Interp where
 
 import Lib
+import qualified Env as E
 
 import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
@@ -16,13 +18,15 @@ import System.IO (hPutStrLn, stderr)
 import qualified Data.Map as M
 import Control.Monad.State.Strict (State, runState, evalState)
 import Control.Monad.State (modify, MonadIO (liftIO), MonadState (get, put))
-import Data.Functor (($>))
+import Data.Functor (($>), (<&>))
 import Control.Monad.State.Strict (StateT)
 import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.State.Strict (gets)
 
 
 -- data InterpError = VarNotFound SourcePos Ident
+
+type Env = E.Env Ident (Val SourcePos)
 
 data EvalError = 
     EvalError SourcePos String
@@ -35,16 +39,7 @@ instance Show EvalError where
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
 
-type Env = M.Map Ident (Val SourcePos)
 
-type GEnv = M.Map Ident (Val SourcePos)
-
-withLocalScope :: Interp () -> Interp ()
-withLocalScope action = do
-  outterScope <- get
-  _ <- action
-  _ <- put outterScope
-  return ()
 
 
 type Interp a = ExceptT EvalError (StateT Env IO) a
@@ -56,16 +51,17 @@ throwVarError :: SourcePos -> Ident -> Interp a
 throwVarError p id' = throwError $ VarNotFound p id'
 
 addBinding :: Ident -> Val SourcePos -> Interp ()
-addBinding id' = modify . M.insert id'
+addBinding id' = modify . E.pushValue id'
 
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
 lookupVar p id' = do
-  res <- gets (M.lookup id')
+  res <- gets (E.peekValue id')
   case res of
     Just val -> return val
     _        -> throwVarError p id'
 
-
+guardVariableExists :: SourcePos -> Ident -> Interp ()
+guardVariableExists p id' = lookupVar p id' >> return ()
 
 data Val a = 
     VNum a Float
@@ -133,7 +129,8 @@ runEval (EGroup _ e)          = runEval e
 runEval (EBinOp p Assign l r) = do
   r' <- runEval r
   case l of
-    EVar _ id' ->
+    EVar p id' -> do
+      guardVariableExists p id'
       addBinding id' r'
     _ -> throwEvalErr p "variable"
   return r'
@@ -190,7 +187,7 @@ interpStatement (VarDecl p id' e) =
 interpStatement (Block p sts) = interpBlock [] sts
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
-interpBlock localVars [] = modify (M.filterWithKey (\k _ -> k `notElem` localVars))
+interpBlock localVars [] = modify (E.popValues localVars)
 interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
   interpStatement decl >> interpBlock (id' : localVars) rest
 interpBlock localVars (st:rest) =
