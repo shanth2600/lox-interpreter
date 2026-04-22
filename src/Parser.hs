@@ -72,7 +72,7 @@ forLoop = do
       (token' T.LeftParen)
       (token' T.RightParen)
       ((,,) <$> 
-        statement' <*> 
+        (optionMaybe singleStatment) <* token' T.Semicolon <*> 
         expr <* token' T.Semicolon  <*> 
         optionMaybe expr)
   body <- statement'

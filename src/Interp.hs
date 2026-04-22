@@ -226,7 +226,7 @@ interpStatement (While p pred body) = go
         then interpStatement body >> go
         else return ()
 interpStatement (For p (init,pred,step) body) =
-  interpStatement init >> go
+  maybe (return ()) interpStatement init >> go
   where
     go = do
       pred' <- runEval pred
