@@ -48,6 +48,7 @@ data Statement n =
   | VarDecl n Ident (Maybe (Exp n))
   | Block n [Statement n]
   | If n (Exp n) (Statement n) (Maybe (Statement n))
+  | While n (Exp n) (Statement n)
   deriving Show
 
 data Exp n where

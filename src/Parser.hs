@@ -36,6 +36,7 @@ statement' :: Parser (Statement SourcePos)
 statement' = 
   (singleStatment <* token' (T.Semicolon ())) <|>
   ifStatement <|>
+  whileLoop <|>
   block'
 
 singleStatment :: Parser (Statement SourcePos)
@@ -55,6 +56,12 @@ ifStatement = do
             statement'
   return $ If p pred then' else'
 
+whileLoop :: Parser (Statement SourcePos)
+whileLoop = do
+ (p,_) <- reserved' "while"
+ pred <- eGroup
+ body <- statement'
+ return $ While p pred body
 
 block' :: Parser (Statement SourcePos)
 block' = do

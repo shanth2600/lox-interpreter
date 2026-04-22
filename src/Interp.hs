@@ -151,7 +151,7 @@ runEval (EBinOp p And e1 e2) = do
   v1 <- runEval e1
   case v1 of
     v1 | not (truthy v1) -> return v1
-       | otherwise -> runEval e2
+       | otherwise       -> runEval e2
 runEval (EBinOp p Or e1 e2) = do
   v1 <- runEval e1
   case v1 of
@@ -215,6 +215,14 @@ interpStatement (If p pred then' else') = do
   if (truthy pred') 
     then interpStatement then' 
     else (maybe (return ()) interpStatement else')
+interpStatement (While p pred body) = go
+  where
+    go = do
+      pred' <- runEval pred
+      if(truthy pred') 
+        then interpStatement body >> go
+        else return ()
+  
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
 interpBlock localVars [] = modify (E.popValues localVars)
