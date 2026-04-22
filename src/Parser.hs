@@ -93,9 +93,8 @@ binOperand =
   eVar        <|>
   eString     <|>
   eNum        <|>
+  eNil        <|>
   eGroup
-
--- boolOp :: SourcePos -> P
 
  
 
