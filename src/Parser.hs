@@ -98,8 +98,8 @@ varDecl = do
 
 expr :: Parser ExpS
 expr =
-  try funCall <|>
   assmtExp    <|> 
+  try funCall <|>
   eNum        <|>
   eBool       <|> 
   eNil        <|>
@@ -112,6 +112,7 @@ expr =
 
 binOperand :: Parser ExpS
 binOperand =
+  try funCall <|>
   try eNegExp <|>
   eBool       <|>
   eVar        <|>
