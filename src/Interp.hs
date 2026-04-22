@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE InstanceSigs #-}
 module Interp where
 
 import Lib
@@ -89,7 +90,7 @@ data Val a =
   | VBool a Bool
   | VFloat a String
   | VNil a
-  | VClosure a [Ident] (Statement a) Env
+  | VClosure a Ident [Ident] (Statement a) Env
   | VString a String
 
 truthy :: Val a -> Bool
@@ -113,10 +114,12 @@ valPos (VNil a)      = a
 valPos (VString a _) = a
 
 instance Show (Val a) where
+  show :: Val a -> String
   show (VNum _ n)      = displayNum $ showFFloat Nothing n ""
   show (VBool _ True)  = "true"
   show (VBool _ False) = "false"
   show (VNil _)        = "nil"
+  show (VClosure _ funId _ _ _) = printf "<fn %s>" funId
   show (VString _ str) = str
   show (VFloat _ str)  = str
 
@@ -144,7 +147,7 @@ runEval (EFunCall p "clock" []) = do
 runEval (EFunCall p funId _) = do
   closure <- lookupVar p funId
   case closure of
-    (VClosure p args body env) -> do
+    (VClosure p _ args body env) -> do
       (withLocalScope env $
         interpStatement body) >> (return $ VNil p)
     _ -> error "function not found"
@@ -256,7 +259,7 @@ interpStatement (For p (init,pred,step) body) =
       else return ()
 interpStatement (FunDecl n funId args body) = do
   env <- get
-  addBinding funId (VClosure n args body env)
+  addBinding funId (VClosure n funId args body env)
 
 interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
 interpBlock localVars [] = purgeVarsFromScope localVars
