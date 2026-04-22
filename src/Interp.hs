@@ -149,11 +149,9 @@ runEval (EBinOp p Assign l r) = do
   return r'
 runEval (EBinOp p And e1 e2) = do
   v1 <- runEval e1
-  v2 <- runEval e2
-  case (v1,v2) of
-    (v1,v2) | truthy v1, truthy v2       -> return v2
-            | not (truthy v1), truthy v2 -> return v1
-            | truthy v1, not (truthy v2) -> return v2
+  case v1 of
+    v1 | not (truthy v1) -> return v1
+       | otherwise -> runEval e2
 runEval (EBinOp p Or e1 e2) = do
   v1 <- runEval e1
   case v1 of
