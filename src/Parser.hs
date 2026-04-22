@@ -49,8 +49,8 @@ ifStatement :: Parser (Statement SourcePos)
 ifStatement = do
   (p,_) <- reserved' "if"
   pred <- eGroup
-  blk <- block'
-  return $ If p pred blk
+  then' <- statement'
+  return $ If p pred then'
 
 
 block' :: Parser (Statement SourcePos)
