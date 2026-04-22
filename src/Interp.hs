@@ -144,18 +144,27 @@ runEval (EBinOp p Assign l r) = do
   case l of
     EVar p id' -> do
       modifyBinding id' r'
+      return r'
     _ -> throwEvalErr p "variable"
   return r'
+runEval (EBinOp p And e1 e2) = do
+  v1 <- runEval e1
+  v2 <- runEval e2
+  case (v1,v2) of
+    (v1,v2) | truthy v1, truthy v2 -> return v1
+            | otherwise            -> return (VBool p False)
+runEval (EBinOp p Or e1 e2) = do
+  v1 <- runEval e1
+  case v1 of
+    v1 | truthy v1 -> return v1
+       | otherwise -> do
+        v2 <- runEval e2
+        if (truthy v2) then return v2 else return (VBool p False)
 runEval (EBinOp p op e1 e2) = do
   v1 <- runEval e1
   v2 <- runEval e2
   case (op, v1, v2) of
     (Equal, v1, v2) -> return $ VBool (valPos v1) (v1 == v2)
-    (And, v1, v2) | truthy v1, truthy v2 -> return v1
-                  | otherwise            -> return (VBool p False)
-    (Or, v1, v2)  | truthy v1 -> return v1
-                  | truthy v2 -> return v2
-                  | otherwise -> return (VBool p False)
     (NotEqual, v1, v2) -> return $ VBool (valPos v1) (v1 /= v2)
     (Plus, (VNum p v1'), (VNum _ v2')) -> return $ VNum p (v1' + v2')
     (Plus, (VString p v1'), (VString _ v2')) -> return $ VString p (v1' ++ v2')
