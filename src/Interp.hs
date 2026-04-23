@@ -259,7 +259,7 @@ interpStatement (While p pred body) = go
     go = do
       pred' <- runEval pred
       if(truthy pred') 
-        then interpStatement body >> go
+        then handleReturn (interpStatement body) go
         else continue
 interpStatement (For p (init,pred,step) body) =
   maybe continue interpStatement init >> go
@@ -267,9 +267,10 @@ interpStatement (For p (init,pred,step) body) =
     go = do
       pred' <- runEval pred
       if truthy pred' 
-      then 
-        interpStatement body >> 
-        (maybe (return $ VNil p) runEval step) >> go
+      then
+        handleReturn 
+          (interpStatement body) 
+          ((maybe (return $ VNil p) runEval step) >> go)
       else continue
 interpStatement (FunDecl p funId args body) = do
   env <- get
@@ -289,8 +290,10 @@ interpBlock p = go
     go localVars (decl@(VarDecl _ id' _): rest) = 
       interpStatement decl >> go (id' : localVars) rest
     go localVars (st:rest) = do
-      v <- interpStatement st
-      either (return . Left) (const $ go localVars rest) v
+      handleReturn (interpStatement st) (go localVars rest)
+
+handleReturn :: Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ())
+handleReturn action cont = action >>= (either (return . Left) (const $ cont))
       
       
 
