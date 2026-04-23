@@ -154,9 +154,9 @@ runEval (EFunCall p funId args) = do
         args' <- mapM runEval args
         let argsBindings = zip params args'
         addBindings argsBindings
-        interpStatement body
+        v <- interpStatement body
         purgeVarsFromScope params
-        return $ VNil p
+        return v
     _ -> error "function not found"
   where
     unpackVarId (EVar _ id') = id'
@@ -275,7 +275,12 @@ interpBlock :: SourcePos -> [Ident] -> [Statement SourcePos] -> Interp (Val Sour
 interpBlock p = go
   where 
     go :: [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
-    go localVars [] = purgeVarsFromScope localVars >> return (VNil p)
+    go localVars [] = 
+      purgeVarsFromScope localVars >> return (VNil p)
+    go localVars (Return p e :_) = do
+      v <- runEval e
+      purgeVarsFromScope localVars 
+      return v
     go localVars (decl@(VarDecl _ id' _): rest) = 
       interpStatement decl >> go (id' : localVars) rest
     go localVars (st:rest) =

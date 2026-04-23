@@ -43,9 +43,9 @@ statement' =
   block'
 
 singleStatment :: Parser (Statement SourcePos)
-singleStatment = (do
-  _ <- reserved' "print"
-  Print <$> getPosition <*> expr) <|>
+singleStatment = 
+  Print <$>  (reserved' "print" *> getPosition) <*> expr <|>
+  Return <$> (reserved' "return" *> getPosition) <*> expr <|>
   try varDecl <|>
   ExpSt <$> getPosition <*> expr
 
