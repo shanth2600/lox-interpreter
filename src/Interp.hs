@@ -160,6 +160,7 @@ runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
 runEval (EFunCall p fun args) = do
+  env <- get
   closure <- runEval fun
   oldEnv <- get
   case closure of
@@ -171,8 +172,9 @@ runEval (EFunCall p fun args) = do
         v <- interpStatement body
         purgeVarsFromScope params
         env' <- get
-        modifyBinding funId (VClosure p funId params body env')
-        put oldEnv
+        put $ 
+          E.pushValue funId 
+                      (VClosure p funId params body env') oldEnv
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
