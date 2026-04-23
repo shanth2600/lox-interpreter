@@ -154,9 +154,10 @@ runEval (EFunCall p funId args) = do
         args' <- mapM runEval args
         let argsBindings = zip params args'
         addBindings argsBindings
+        m <- get
         v <- interpStatement body
         purgeVarsFromScope params
-        return v
+        either return (const $ return (VNil p)) v
     _ -> error "function not found"
   where
     unpackVarId (EVar _ id') = id'
@@ -234,32 +235,34 @@ interp sts =
       (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
       return
 
-  
+continue ::  Interp (Either (Val SourcePos) ())
+continue = return $ Right ()
 
-interpStatement :: Statement SourcePos -> Interp (Val SourcePos)
-interpStatement (Return _ e) = 
-  runEval e
+interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+interpStatement (Return _ e) = do
+  (Left <$> runEval e)
 interpStatement (Print p e) = 
-  runEval e >>= liftIO . putStrLn . show >> return (VNil p)
+  runEval e >>= liftIO . putStrLn . show >> continue
 interpStatement (ExpSt p e) = 
-  runEval e >> return (VNil p)
+  runEval e >> continue
 interpStatement (VarDecl p id' e) =
-  (maybe (return $ VNil p) runEval e >>= addBinding id') >> return (VNil p)
+  (maybe (return $ VNil p) runEval e >>= addBinding id') >> continue
 interpStatement (Block p sts) = interpBlock p [] sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
+  m <- get
   if (truthy pred') 
     then interpStatement then' 
-    else (maybe (return (VNil p)) interpStatement else')
+    else (maybe continue interpStatement else')
 interpStatement (While p pred body) = go
   where
     go = do
       pred' <- runEval pred
       if(truthy pred') 
         then interpStatement body >> go
-        else return (VNil p)
+        else continue
 interpStatement (For p (init,pred,step) body) =
-  maybe (return (VNil p)) interpStatement init >> go
+  maybe continue interpStatement init >> go
   where
     go = do
       pred' <- runEval pred
@@ -267,26 +270,28 @@ interpStatement (For p (init,pred,step) body) =
       then 
         interpStatement body >> 
         (maybe (return $ VNil p) runEval step) >> go
-      else return (VNil p)
+      else continue
 interpStatement (FunDecl p funId args body) = do
   env <- get
   addBinding funId (VClosure p funId args body env)
-  return (VNil p)
+  continue
 
-interpBlock :: SourcePos -> [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
+interpBlock :: SourcePos -> [Ident] -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
 interpBlock p = go
   where 
-    go :: [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
+    go :: [Ident] -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
     go localVars [] = 
-      purgeVarsFromScope localVars >> return (VNil p)
+      purgeVarsFromScope localVars >> continue
     go localVars (ret@(Return p e) :_) = do
       v <- interpStatement ret
       purgeVarsFromScope localVars 
       return v
     go localVars (decl@(VarDecl _ id' _): rest) = 
       interpStatement decl >> go (id' : localVars) rest
-    go localVars (st:rest) =
-      interpStatement st >> go localVars  rest
+    go localVars (st:rest) = do
+      v <- interpStatement st
+      either (return . Left) (const $ go localVars rest) v
+      
       
 
 
