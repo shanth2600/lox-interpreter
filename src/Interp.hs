@@ -58,6 +58,9 @@ throwVarError p id' = throwError $ VarNotFound p id'
 addBinding :: Ident -> Val SourcePos -> Interp ()
 addBinding id' = modify . E.pushValue id'
 
+addBindings :: [(Ident, Val SourcePos)] -> Interp ()
+addBindings = mapM_ (uncurry addBinding)
+
 modifyBinding :: Ident -> Val SourcePos -> Interp ()
 modifyBinding id' val = do
   guardVariableExists (valPos val) id'
@@ -227,28 +230,28 @@ interp sts =
 
   
 
-interpStatement :: Statement SourcePos -> Interp ()
-interpStatement (Print _ e) = 
-  runEval e >>= liftIO . putStrLn . show
-interpStatement (ExpSt _ e) = 
-  runEval e $> ()
+interpStatement :: Statement SourcePos -> Interp (Val SourcePos)
+interpStatement (Print p e) = 
+  runEval e >>= liftIO . putStrLn . show >> return (VNil p)
+interpStatement (ExpSt p e) = 
+  runEval e >> return (VNil p)
 interpStatement (VarDecl p id' e) =
-  (maybe (return $ VNil p) runEval e >>= addBinding id') $> ()
-interpStatement (Block p sts) = interpBlock [] sts
+  (maybe (return $ VNil p) runEval e >>= addBinding id') >> return (VNil p)
+interpStatement (Block p sts) = interpBlock p [] sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
     then interpStatement then' 
-    else (maybe (return ()) interpStatement else')
+    else (maybe (return (VNil p)) interpStatement else')
 interpStatement (While p pred body) = go
   where
     go = do
       pred' <- runEval pred
       if(truthy pred') 
         then interpStatement body >> go
-        else return ()
+        else return (VNil p)
 interpStatement (For p (init,pred,step) body) =
-  maybe (return ()) interpStatement init >> go
+  maybe (return (VNil p)) interpStatement init >> go
   where
     go = do
       pred' <- runEval pred
@@ -256,17 +259,21 @@ interpStatement (For p (init,pred,step) body) =
       then 
         interpStatement body >> 
         (maybe (return $ VNil p) runEval step) >> go
-      else return ()
-interpStatement (FunDecl n funId args body) = do
+      else return (VNil p)
+interpStatement (FunDecl p funId args body) = do
   env <- get
-  addBinding funId (VClosure n funId args body env)
+  addBinding funId (VClosure p funId args body env)
+  return (VNil p)
 
-interpBlock :: [Ident] -> [Statement SourcePos] -> Interp ()
-interpBlock localVars [] = purgeVarsFromScope localVars
-interpBlock localVars (decl@(VarDecl _ id' _): rest) = 
-  interpStatement decl >> interpBlock (id' : localVars) rest
-interpBlock localVars (st:rest) =
-  interpStatement st >> interpBlock localVars  rest
+interpBlock :: SourcePos -> [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
+interpBlock p = go
+  where 
+    go :: [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
+    go localVars [] = purgeVarsFromScope localVars >> return (VNil p)
+    go localVars (decl@(VarDecl _ id' _): rest) = 
+      interpStatement decl >> go (id' : localVars) rest
+    go localVars (st:rest) =
+      interpStatement st >> go localVars  rest
       
 
 
