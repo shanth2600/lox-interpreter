@@ -36,7 +36,7 @@ main = do
                     Right ast -> eval ast
                 "run"      ->
                   case parseProgResult of
-                    Left _ -> exitWith (ExitFailure 70)
+                    Left _ -> exitWith (ExitFailure 65)
                     Right ast -> interp ast
                 _          -> hPutStrLn stderr ("Unknown command: " ++ command) >>
                               exitFailure

@@ -36,6 +36,7 @@ type Env = E.Env Ident (Val SourcePos)
 data EvalError = 
     EvalError SourcePos String
   | VarNotFound SourcePos Ident
+  | ExpectedFunError SourcePos
   deriving Eq
 
 instance Show EvalError where
@@ -43,6 +44,8 @@ instance Show EvalError where
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
+  show (ExpectedFunError p) = 
+    printf "Can only call functions and classes.\n[line %d]" (sourceLine p)
 
 
 
@@ -51,6 +54,9 @@ type Interp a = ExceptT EvalError (StateT Env IO) a
 
 throwEvalErr :: SourcePos -> String -> Interp a
 throwEvalErr p s = throwError $ EvalError p s
+
+throwFunErr :: SourcePos -> Interp a
+throwFunErr p = throwError $ ExpectedFunError p
 
 throwVarError :: SourcePos -> Ident -> Interp a
 throwVarError p id' = throwError $ VarNotFound p id'
@@ -158,7 +164,7 @@ runEval (EFunCall p fun args) = do
         v <- interpStatement body
         purgeVarsFromScope params
         either return (const $ return (VNil p)) v
-    _ -> error "function not found"
+    _ -> throwFunErr p
   where
     unpackVarId (EVar _ id') = id'
 runEval (ENot p e)          = do

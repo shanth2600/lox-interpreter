@@ -135,6 +135,8 @@ binOperand =
   eNil        <|>
   eGroup
 
+
+
  
 
 addBinOp :: SourcePos -> Parser (ExpS -> ExpS -> ExpS)
@@ -214,18 +216,27 @@ assmtExp = do
 
 funCall :: Parser ExpS
 funCall = do
-  (EVar p id') <- eVar
+  e <- expr'
   args <- many1 $ between (token' T.LeftParen)
                   (token' T.RightParen)
                   (sepBy expr (token' T.Comma))
-  return $ nestCalls p id' args
+  return $ nestCalls (expPos e) e args
   where
-    nestCalls :: SourcePos -> Ident -> [[ExpS]] -> ExpS
-    nestCalls p funId args = go (EFunCall p (EVar p funId)) args
+    expr' :: Parser ExpS
+    expr' =
+      try eNegExp <|>
+      eBool       <|>
+      eVar        <|>
+      eString     <|>
+      eNum        <|>
+      eNil        <|>
+      eGroup
+    nestCalls :: SourcePos -> ExpS -> [[ExpS]] -> ExpS
+    nestCalls p fun args = go (EFunCall p fun) args
       where
         go :: ([ExpS] -> ExpS) -> [[ExpS]] -> ExpS
-        go call [] = call []
-        go call [args] = call args
+        go call []          = call []
+        go call [args]      = call args
         go call (args:rest) = go (EFunCall p (call args)) rest
 
   
