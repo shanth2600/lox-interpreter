@@ -27,6 +27,7 @@ import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.State.Strict (gets)
 import Debug.Trace (trace)
 import Data.Maybe (fromMaybe)
+import Control.Monad (when)
 
 
 -- data InterpError = VarNotFound SourcePos Ident
@@ -159,15 +160,18 @@ runEval (EFunCall p (EVar _ "clock") []) = do
   return (VNum p (realToFrac t))
 runEval (EFunCall p fun args) = do
   closure <- runEval fun
+  oldEnv <- get
   case closure of
-    (VClosure p _ params body env) -> do
-        guardEnoughArgs p params args
+    (VClosure p funId params body env) -> do
+        put env
+        when (length params /= length args) (throwFunErr p)
         args' <- mapM runEval args
-        let argsBindings = zip params args'
-        addBindings argsBindings
-        m <- get
+        addBindings $ (zip params args')
         v <- interpStatement body
         purgeVarsFromScope params
+        env' <- get
+        modifyBinding funId (VClosure p funId params body env')
+        put oldEnv
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
@@ -228,11 +232,6 @@ runEval (EBinOp p op e1 e2) = do
     (LessEqual, _, _) -> throwEvalErr p "numbers"
     (GreaterEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' >= v2')
     (GreaterEqual, _, _) -> throwEvalErr p "numbers"
-
-guardEnoughArgs :: SourcePos -> [a] -> [b] -> Interp ()
-guardEnoughArgs p args params
-  | length args == length params = return ()
-  | otherwise                    = throwMsgErr p "Incorrect number of arguments"
 
 
 eval :: Exp SourcePos -> IO ()
