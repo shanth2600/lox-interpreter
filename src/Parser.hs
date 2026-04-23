@@ -217,7 +217,7 @@ funCall = do
   (EVar p id') <- eVar
   args <- between (token' T.LeftParen)
                   (token' T.RightParen)
-                  (many expr)
+                  (sepBy1 expr (token' T.Comma))
   return $ EFunCall p id' args
   
 
@@ -292,7 +292,7 @@ eof' = void $ token' T.EOF
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser (expr) () "" lexTokens)
+testParse str = either (error . show) id (runParser expr () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
