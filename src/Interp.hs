@@ -37,6 +37,7 @@ data EvalError =
     EvalError SourcePos String
   | VarNotFound SourcePos Ident
   | ExpectedFunError SourcePos
+  | MsgError SourcePos String
   deriving Eq
 
 instance Show EvalError where
@@ -44,8 +45,8 @@ instance Show EvalError where
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
-  show (ExpectedFunError p) = 
-    printf "Can only call functions and classes.\n[line %d]" (sourceLine p)
+  show (MsgError p str) = 
+    printf "%s.\n[line %d]" str (sourceLine p)
 
 
 
@@ -56,7 +57,10 @@ throwEvalErr :: SourcePos -> String -> Interp a
 throwEvalErr p s = throwError $ EvalError p s
 
 throwFunErr :: SourcePos -> Interp a
-throwFunErr p = throwError $ ExpectedFunError p
+throwFunErr p = throwError $ MsgError p "Can only call functions and classes"
+
+throwMsgErr :: SourcePos -> String -> Interp a
+throwMsgErr p = throwError . MsgError p
 
 throwVarError :: SourcePos -> Ident -> Interp a
 throwVarError p id' = throwError $ VarNotFound p id'
@@ -157,6 +161,7 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p _ params body env) -> do
+        guardEnoughArgs p params args
         args' <- mapM runEval args
         let argsBindings = zip params args'
         addBindings argsBindings
@@ -223,6 +228,11 @@ runEval (EBinOp p op e1 e2) = do
     (LessEqual, _, _) -> throwEvalErr p "numbers"
     (GreaterEqual, (VNum p v1'), (VNum _ v2')) -> return $ VBool p (v1' >= v2')
     (GreaterEqual, _, _) -> throwEvalErr p "numbers"
+
+guardEnoughArgs :: SourcePos -> [a] -> [b] -> Interp ()
+guardEnoughArgs p args params
+  | length args == length params = return ()
+  | otherwise                    = throwMsgErr p "Incorrect number of arguments"
 
 
 eval :: Exp SourcePos -> IO ()
