@@ -33,7 +33,8 @@ token' =
   try (string "==" >> posToken EqualEqual) <|>
   try (string "<=" >> posToken LessEqual) <|>
   try (string ">=" >> posToken GreaterEqual) <|>
-  try reserved' <|>
+  -- extract (alphaNum <|> char '_') to its own parser
+  try (reserved' <* notFollowedBy (alphaNum <|> char '_')) <|>
   (string "(" >> posToken LeftParen) <|>
   (string ")" >> posToken RightParen) <|>
   (string "{" >> posToken LeftBrace) <|>

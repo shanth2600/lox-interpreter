@@ -144,11 +144,11 @@ runEval (ENil p)            = return $ VNil p
 runEval (ENum p n)          = return $ VNum p n
 runEval (EBool p b)         = return $ VBool p b
 runEval (EString p str)     = return $ VString p str
-runEval (EFunCall p "clock" []) = do
+runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
-runEval (EFunCall p funId args) = do
-  closure <- lookupVar p funId
+runEval (EFunCall p fun args) = do
+  closure <- runEval fun
   case closure of
     (VClosure p _ params body env) -> do
         args' <- mapM runEval args

@@ -215,10 +215,19 @@ assmtExp = do
 funCall :: Parser ExpS
 funCall = do
   (EVar p id') <- eVar
-  args <- between (token' T.LeftParen)
+  args <- many1 $ between (token' T.LeftParen)
                   (token' T.RightParen)
                   (sepBy expr (token' T.Comma))
-  return $ EFunCall p id' args
+  return $ nestCalls p id' args
+  where
+    nestCalls :: SourcePos -> Ident -> [[ExpS]] -> ExpS
+    nestCalls p funId args = go (EFunCall p (EVar p funId)) args
+      where
+        go :: ([ExpS] -> ExpS) -> [[ExpS]] -> ExpS
+        go call [] = call []
+        go call [args] = call args
+        go call (args:rest) = go (EFunCall p (call args)) rest
+
   
 
   
@@ -292,7 +301,7 @@ eof' = void $ token' T.EOF
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser expr () "" lexTokens)
+testParse str = either (error . show) id (runParser funCall () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 

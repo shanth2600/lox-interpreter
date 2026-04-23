@@ -63,7 +63,7 @@ data Exp n where
   ENot     :: n -> Exp n -> Exp n
   EVar     :: n -> Ident -> Exp n
   EGroup   :: n -> Exp n -> Exp n
-  EFunCall :: n -> Ident -> [Exp n] -> Exp n
+  EFunCall :: n -> Exp n -> [Exp n] -> Exp n
   EAssmt   :: n -> Ident -> Exp n -> Exp n
   ENil     :: n -> Exp n
 
@@ -81,7 +81,7 @@ expPos (ENil    n)       = n
 instance Show (Exp a) where
   show :: Exp n -> String
   show (ENum _ n)            = displayNum n
-  show (EFunCall _ fid args) = printf "%s(%s)" fid (intercalate "," $ map show args)
+  show (EFunCall _ fun args) = printf "%s(%s)" (show fun) (intercalate "," $ map show args)
   show (EBinOp _ op e1 e2)   = printf "(%s %s %s)" (show op) (show e1) (show e2)
   show (EBool _ True)        = "true"
   show (EBool _ False)       = "false"
