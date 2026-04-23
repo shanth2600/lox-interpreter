@@ -217,7 +217,7 @@ funCall = do
   (EVar p id') <- eVar
   args <- between (token' T.LeftParen)
                   (token' T.RightParen)
-                  (sepBy1 expr (token' T.Comma))
+                  (sepBy expr (token' T.Comma))
   return $ EFunCall p id' args
   
 
