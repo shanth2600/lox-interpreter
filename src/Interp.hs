@@ -237,6 +237,8 @@ interp sts =
   
 
 interpStatement :: Statement SourcePos -> Interp (Val SourcePos)
+interpStatement (Return _ e) = 
+  runEval e
 interpStatement (Print p e) = 
   runEval e >>= liftIO . putStrLn . show >> return (VNil p)
 interpStatement (ExpSt p e) = 
@@ -277,8 +279,8 @@ interpBlock p = go
     go :: [Ident] -> [Statement SourcePos] -> Interp (Val SourcePos)
     go localVars [] = 
       purgeVarsFromScope localVars >> return (VNil p)
-    go localVars (Return p e :_) = do
-      v <- runEval e
+    go localVars (ret@(Return p e) :_) = do
+      v <- interpStatement ret
       purgeVarsFromScope localVars 
       return v
     go localVars (decl@(VarDecl _ id' _): rest) = 
