@@ -147,13 +147,19 @@ runEval (EString p str)     = return $ VString p str
 runEval (EFunCall p "clock" []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
-runEval (EFunCall p funId _) = do
+runEval (EFunCall p funId args) = do
   closure <- lookupVar p funId
   case closure of
-    (VClosure p _ args body env) -> do
-      (withLocalScope env $
-        interpStatement body) >> (return $ VNil p)
+    (VClosure p _ params body env) -> do
+        args' <- mapM runEval args
+        let argsBindings = zip params args'
+        addBindings argsBindings
+        interpStatement body
+        purgeVarsFromScope params
+        return $ VNil p
     _ -> error "function not found"
+  where
+    unpackVarId (EVar _ id') = id'
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of
