@@ -239,8 +239,10 @@ continue ::  Interp (Either (Val SourcePos) ())
 continue = return $ Right ()
 
 interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpStatement (Return _ e) = do
-  (Left <$> runEval e)
+interpStatement (Return p Nothing) = 
+  return $ Left (VNil p)
+interpStatement (Return _ (Just e)) =
+  Left <$> runEval e
 interpStatement (Print p e) = 
   runEval e >>= liftIO . putStrLn . show >> continue
 interpStatement (ExpSt p e) = 

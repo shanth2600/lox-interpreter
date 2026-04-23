@@ -51,7 +51,7 @@ data Statement n =
   | While n (Exp n) (Statement n)
   | For n ((Maybe (Statement n)), (Exp n), (Maybe (Exp n))) (Statement n)
   | FunDecl n Ident [Ident] (Statement SourcePos)
-  | Return n (Exp n)
+  | Return n (Maybe (Exp n))
   deriving Show
 
 data Exp n where

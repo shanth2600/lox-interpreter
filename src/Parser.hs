@@ -45,7 +45,7 @@ statement' =
 singleStatment :: Parser (Statement SourcePos)
 singleStatment = 
   Print <$>  (reserved' "print" *> getPosition) <*> expr <|>
-  Return <$> (reserved' "return" *> getPosition) <*> expr <|>
+  Return <$> (reserved' "return" *> getPosition) <*> optionMaybe expr <|>
   try varDecl <|>
   ExpSt <$> getPosition <*> expr
 
