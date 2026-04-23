@@ -121,11 +121,12 @@ instance Eq (Val a) where
   _ == _ = False
 
 valPos :: Val a -> a
-valPos (VNum a _)    = a
-valPos (VBool a _)   = a
-valPos (VFloat a _)  = a
-valPos (VNil a)      = a
-valPos (VString a _) = a
+valPos (VNum a _)             = a
+valPos (VBool a _)            = a
+valPos (VFloat a _)           = a
+valPos (VNil a)               = a
+valPos (VString a _)          = a
+valPos (VClosure a _ _ _ _)   = a
 
 instance Show (Val a) where
   show :: Val a -> String
@@ -166,7 +167,7 @@ runEval (EFunCall p fun args) = do
         put env
         when (length params /= length args) (throwFunErr p)
         args' <- mapM runEval args
-        addBindings $ (zip params args')
+        addBindings (zip params args')
         v <- interpStatement body
         purgeVarsFromScope params
         env' <- get
