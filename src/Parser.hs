@@ -183,7 +183,7 @@ boolExp = do
   lhs' <- (lookAhead lhs)
   lhs `chainr1` (boolBinOp (expPos lhs'))
     where
-    lhs = binOperand
+    lhs = arithRelExp <|> binOperand
 
 
 arithAddExp :: Parser ExpS
@@ -198,7 +198,7 @@ arithMulExp = do
   lhs' <- lookAhead lhs
   lhs `chainl1` (mulBinOp (expPos lhs'))
   where
-    lhs = boolExp <|> binOperand
+    lhs = binOperand
 
 arithRelExp :: Parser ExpS
 arithRelExp = do
@@ -212,7 +212,7 @@ assmtExp = do
   lhs' <- (lookAhead lhs)
   lhs `chainr1` (assmtBinOp (expPos lhs'))
     where
-    lhs = arithRelExp <|> (eVar <|> eNum)
+    lhs = boolExp <|> (eVar <|> eNum)
 
 funCall :: Parser ExpS
 funCall = do
@@ -312,7 +312,7 @@ eof' = void $ token' T.EOF
 
 
 testParse :: String -> Exp SourcePos
-testParse str = either (error . show) id (runParser funCall () "" lexTokens)
+testParse str = either (error . show) id (runParser expr () "" lexTokens)
   where
     lexTokens = [ tk | (L.LexToken tk) <- L.tokenize "" str]
 
