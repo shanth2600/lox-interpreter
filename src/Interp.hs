@@ -307,14 +307,14 @@ interpStatement (Block p sts) = interpBlock sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
-    then interpStatement then' 
-    else (maybe continue interpStatement else')
+    then interpStatementsOf then' 
+    else (maybe continue interpStatementsOf else')
 interpStatement (While p pred body) = go
   where
     go = do
       pred' <- runEval pred
       if(truthy pred') 
-        then handleReturn (interpStatement body) go
+        then handleReturn (interpStatementsOf body) go
         else continue
 interpStatement (For p (init,pred,step) body) =
   maybe continue interpStatement init >> go
@@ -323,13 +323,20 @@ interpStatement (For p (init,pred,step) body) =
       pred' <- runEval pred
       if truthy pred' 
       then handleReturn 
-            (interpStatement body) 
+            (interpStatementsOf body) 
             ((maybe (return $ VNil p) runEval step) >> go)
       else continue
 interpStatement (FunDecl p funId args body) = do
   env <- getLocal
   defineGlobalVariable funId (VClosure p funId args body env)
   continue
+
+interpStatementsOf :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+interpStatementsOf = interpBlock . statementsOf
+  where
+    statementsOf :: Statement SourcePos -> [Statement SourcePos]
+    statementsOf (Block _ sts) = sts
+    statementsOf st            = [st]
 
 -- refactor to use mapM
 interpBlock :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())

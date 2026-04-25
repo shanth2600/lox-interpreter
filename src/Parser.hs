@@ -53,18 +53,18 @@ ifStatement :: Parser (Statement SourcePos)
 ifStatement = do
   (p,_) <- reserved' "if"
   pred <- eGroup
-  then' <- many statement'
+  then' <- statement'
   else' <- optionMaybe $ do 
             _ <- reserved' "else"
-            many statement'
-  return $ If p pred (Block p then') (Block p <$> else')
+            statement'
+  return $ If p pred then' else'
 
 whileLoop :: Parser (Statement SourcePos)
 whileLoop = do
  (p,_) <- reserved' "while"
  pred <- eGroup
- body <- many statement'
- return $ While p pred (Block p body)
+ body <- statement'
+ return $ While p pred body
 
 forLoop :: Parser (Statement SourcePos)
 forLoop = do
@@ -77,8 +77,8 @@ forLoop = do
         (optionMaybe singleStatment) <* token' T.Semicolon <*> 
         expr <* token' T.Semicolon  <*> 
         optionMaybe expr)
-  body <- many statement'
-  return $ For p c (Block p body)
+  body <- statement'
+  return $ For p c body
 
 funDecl :: Parser (Statement SourcePos)
 funDecl = do
