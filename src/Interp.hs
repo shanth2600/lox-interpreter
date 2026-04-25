@@ -204,13 +204,13 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        oldLEnv <- getLocal
-        putLocal (env `M.union` oldLEnv)
+        oldLocalEnv <- getLocal
+        putLocal env
         when (length params /= length args) (throwFunErr p)
         args' <- mapM runEval args
         defineLocalVariables (zip params args')
         v <- interpStatement body
-        putLocal oldLEnv
+        putLocal oldLocalEnv
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
