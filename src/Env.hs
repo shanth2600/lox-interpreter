@@ -18,6 +18,9 @@ type Env k v = M.Map k (Stack v)
 pushValue :: Ord k => k -> v -> Env k v -> Env k v
 pushValue k v = M.insertWith (\_ st -> push v st) k (Stack [v])
 
+varsInScope :: Ord k => Env k v -> [k]
+varsInScope = M.keys
+
 peekValue :: Ord k => k -> Env k v -> Maybe v
 peekValue k env =
   M.lookup k env >>= fst . pop
