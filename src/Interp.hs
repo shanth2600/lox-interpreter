@@ -104,10 +104,9 @@ defineLocalVariables = mapM_ (uncurry defineLocalVariable)
 assignVariable :: Ident -> Val SourcePos -> Interp ()
 assignVariable id' val = do
   res <- get
-  trace (show res) $
-    ifM (existsInLocalScope id')
-        (assignLocalVariable id' val)
-        (defineGlobalVariable id' val)
+  ifM (existsInLocalScope id')
+      (assignLocalVariable id' val)
+      (defineGlobalVariable id' val)
 
 assignLocalVariable :: Ident -> Val SourcePos -> Interp ()
 assignLocalVariable id' val = do
@@ -209,7 +208,7 @@ runEval (EFunCall p fun args) = do
   case closure of
     (VClosure p funId params body env) -> do
         oldLocalEnv <- getLocal
-        putLocal env
+        putLocal (env `M.union` oldLocalEnv)
         when (length params /= length args) (throwFunErr p)
         args' <- mapM runEval args
         defineLocalVariables (zip params args')
