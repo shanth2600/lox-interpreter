@@ -303,7 +303,7 @@ interpStatement (ExpSt p e) =
   runEval e >> continue
 interpStatement (VarDecl p id' e) =
   (maybe (return $ VNil p) runEval e >>= defineGlobalVariable id') >> continue
-interpStatement (Block p sts) = interpBlock p sts
+interpStatement (Block p sts) = interpBlock sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
@@ -332,8 +332,8 @@ interpStatement (FunDecl p funId args body) = do
   continue
 
 -- refactor to use mapM
-interpBlock :: SourcePos -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-interpBlock p = go []
+interpBlock :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
+interpBlock = go []
   where 
     go :: [Ident] -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
     go localVars [] = 
