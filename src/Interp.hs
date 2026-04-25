@@ -89,6 +89,8 @@ putLocal env = modify (bimap id (const env))
 getLocal :: Interp (LEnv)
 getLocal = snd <$> get
 
+purgeLocalScope :: Interp ()
+purgeLocalScope = putLocal M.empty
 
 defineLocalVariable :: Ident -> Val SourcePos -> Interp ()
 defineLocalVariable id' = modify . second . E.pushValue id'
@@ -100,10 +102,12 @@ defineLocalVariables :: [(Ident, Val SourcePos)] -> Interp ()
 defineLocalVariables = mapM_ (uncurry defineLocalVariable)
 
 assignVariable :: Ident -> Val SourcePos -> Interp ()
-assignVariable id' val = 
-  ifM (existsInLocalScope id')
-      (assignLocalVariable id' val)
-      (defineGlobalVariable id' val)
+assignVariable id' val = do
+  res <- get
+  trace (show res) $
+    ifM (existsInLocalScope id')
+        (assignLocalVariable id' val)
+        (defineGlobalVariable id' val)
 
 assignLocalVariable :: Ident -> Val SourcePos -> Interp ()
 assignLocalVariable id' val = do
@@ -330,24 +334,30 @@ interpStatement (FunDecl p funId args body) = do
 
 -- refactor to use mapM
 interpBlock :: SourcePos -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-interpBlock p = go
+interpBlock p = go []
   where 
-    go ::[Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-    go [] = 
+    go :: [Ident] -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
+    go localVars [] = 
+      purgeVarsFromLocalScope localVars >>
       continue
-    go (ret@(Return p e) :_) =
+    go localVars (ret@(Return p e) :_) =
       case e of
-        Just e  -> Left <$> runEval e
-        Nothing -> return $ Left $ VNil p
-    go (FunDecl p funId args body :rest) = do
+        Just e  -> do
+          v <- runEval e
+          purgeVarsFromLocalScope localVars
+          return $ Left v
+        Nothing ->
+          purgeVarsFromLocalScope localVars >>     
+            (return $ Left $ VNil p)
+    go localVars (FunDecl p funId args body :rest) = do
       env <- getLocal
       defineLocalVariable funId (VClosure p funId args body env)
-      go rest
-    go (decl@(VarDecl p id' v): rest) = do
+      go (funId : localVars) rest
+    go localVars ((VarDecl p id' v): rest) = do
       v' <- maybe (return $ VNil p) runEval v
-      defineLocalVariable id'  v' >> go rest
-    go (st:rest) = do
-      handleReturn (interpStatement st) (go rest)
+      defineLocalVariable id'  v' >> go (id' : localVars) rest
+    go localVars (st:rest) = do
+      handleReturn (interpStatement st) (go localVars rest)
 
 handleReturn :: Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ())
 handleReturn action cont = action >>= (either (return . Left) (const $ cont))
@@ -359,3 +369,6 @@ testEval = eval . testParse
 
 testInterp :: String -> IO ()
 testInterp =  interp . testProgParse
+
+interpFile :: FilePath -> IO ()
+interpFile fp = readFile fp >>= testInterp
