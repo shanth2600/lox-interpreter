@@ -175,6 +175,15 @@ displayNum nStr = case splitOn "." nStr of
       let dec' = dropWhileEnd (== '0') dec
       in if null dec' then "0" else dec'    
 
+withFunctionEnv :: Env -> Interp a -> Interp a
+withFunctionEnv closureEnv action = do
+  oldEnv <- get
+  put closureEnv
+  result <- action
+  newGlobal <- getGlobalScope
+  put (E.insertGlobalScope newGlobal oldEnv)
+  pure result
+
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
 runEval (EVar p id')        = lookupVar p id'
 runEval (ENil p)            = return $ VNil p
@@ -188,17 +197,12 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        oldEnv <- get
-        oldGlobal <- getGlobalScope
         args' <- mapM runEval args 
-        put (E.Env (oldGlobal NE.:| []))
         when (length params /= length args) (throwFunErr p)
-        enterNewScope
-        defineVariables (zip params args')
-        v <- interpStatement body
-        leaveScope
-        newGlobal <- getGlobalScope
-        put (E.insertGlobalScope newGlobal oldEnv)
+        v <- withFunctionEnv env $
+            inLocalScope $ do
+              defineVariables (zip params args')
+              interpStatement body
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
 runEval (ENot p e)          = do
