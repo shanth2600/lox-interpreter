@@ -1,34 +1,51 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE InstanceSigs #-}
 module Env where
 
-import Lib
-import qualified Data.Map as M
 
-newtype Stack a = Stack [a]
+import Control.Monad.Except
+import Data.List.NonEmpty
+    ( NonEmpty(..), cons, fromList, toList, uncons )
+import qualified Data.Map as M
+import Text.Printf (printf)
+import Data.Maybe (isNothing, isJust)
+import Control.Applicative ((<|>))
+import Data.Foldable (asum)
+
+
+type Scope k v = M.Map k v
+
+newtype Env k v = Env (NonEmpty (Scope k v))
   deriving Show
 
-pop :: Stack a -> (Maybe a, Stack a)
-pop (Stack [])    = (Nothing, Stack [])
-pop (Stack (x:res)) = (Just x, Stack res)
+emptyScope :: Scope k v
+emptyScope = M.empty
 
-push :: a -> Stack a -> Stack a
-push a (Stack as) = Stack (a : as)
+emptyEnv :: Env k v
+emptyEnv = Env (emptyScope :| [])
 
-type Env k v = M.Map k (Stack v)
+declareVariable :: forall k v. Ord k => k -> v -> Env k v -> Env k v
+declareVariable k v (Env (scope :| rest)) =
+  Env $ (M.insert k v scope) :| rest
 
-pushValue :: Ord k => k -> v -> Env k v -> Env k v
-pushValue k v = M.insertWith (\_ st -> push v st) k (Stack [v])
+declareVariables :: forall k v. Ord k => [(k,  v)] -> Env k v -> Env k v
+declareVariables bnds env = foldr (uncurry declareVariable) env bnds
 
-varsInScope :: Ord k => Env k v -> [k]
-varsInScope = M.keys
+pushNewScope :: Scope k v -> Env k v -> Env k v
+pushNewScope scope (Env scopes) = Env $ scope `cons` scopes
 
-peekValue :: Ord k => k -> Env k v -> Maybe v
-peekValue k env =
-  M.lookup k env >>= fst . pop
+popScope :: Env k v -> Maybe (Env k v)
+popScope (Env scopes) = Env <$> (snd $ uncons scopes)
 
-popValue :: Ord k => k -> Env k v -> Env k v
-popValue = M.adjust (snd . pop)
+assignToVariable :: forall k v. Ord k => k -> v -> Env k v -> Maybe (Env k v)
+assignToVariable k v (Env scopes) = Env . fromList <$> go (toList scopes)
+  where
+    go :: [Scope k v] -> Maybe [Scope k v]
+    go []              = Nothing
+    go (scope:scopes')
+      | M.member k scope = Just $ M.insert k v scope : scopes'
+      | otherwise        = (scope :) <$> go scopes'
 
-popValues :: Ord k => [k] -> Env k v -> Env k v
-popValues ks env = foldr popValue env ks
-
-test = popValues ["x"] $ popValue "x" (pushValue "x" 2 (pushValue "x" 1 M.empty))
+lookupVariable :: forall k v. Ord k => k -> Env k v -> Maybe v
+lookupVariable k (Env scopes) = asum . map (M.lookup k) $ toList scopes

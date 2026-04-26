@@ -14,7 +14,7 @@ import Data.List.Split (splitOn)
 import Data.List (dropWhileEnd, intercalate)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
-import Control.Monad.Except (Except, runExcept, ExceptT, runExceptT)
+import Control.Monad.Except (Except, runExcept, ExceptT (..), runExceptT)
 import System.Exit (die, exitWith, ExitCode (..))
 import Control.Monad.Error.Class (throwError)
 import System.IO (hPutStrLn, stderr)
@@ -35,16 +35,13 @@ import Data.Either (fromRight)
 
 
 
-type GEnv = M.Map Ident (Val SourcePos)
-type LEnv = E.Env Ident (Val SourcePos)
-
-type Env = (GEnv, LEnv)
 
 data EvalError = 
     EvalError SourcePos String
   | VarNotFound SourcePos Ident
   | ExpectedFunError SourcePos
   | MsgError SourcePos String
+  | RawError String
   deriving Eq
 
 instance Show EvalError where
@@ -56,6 +53,7 @@ instance Show EvalError where
     printf "%s.\n[line %d]" str (sourceLine p)
 
 
+type Env = E.Env Ident (Val SourcePos)
 
 
 type Interp a = ExceptT EvalError (StateT Env IO) a
@@ -69,76 +67,49 @@ throwFunErr p = throwError $ MsgError p "Can only call functions and classes"
 throwMsgErr :: SourcePos -> String -> Interp a
 throwMsgErr p = throwError . MsgError p
 
+throwRawErr :: String -> Interp a
+throwRawErr = throwError . RawError
+
 throwVarError :: SourcePos -> Ident -> Interp a
 throwVarError p id' = throwError $ VarNotFound p id'
 
 defineVariable :: Ident -> Val SourcePos -> Interp ()
-defineVariable id' val = 
-  ifM (existsInLocalScope id')
-      (defineLocalVariable id' val)
-      (defineGlobalVariable id' val)
+defineVariable id' val = modify (E.declareVariable id' val)
 
-existsInLocalScope :: Ident -> Interp Bool
-existsInLocalScope id' = do
-  localScope <- snd <$> get
-  return $ id' `elem` (E.varsInScope localScope)
+defineVariables :: [(Ident, Val SourcePos)] -> Interp ()
+defineVariables = modify . E.declareVariables
 
-putLocal :: LEnv -> Interp ()
-putLocal env = modify (bimap id (const env))
+enterNewScope :: Interp ()
+enterNewScope = modify (E.pushNewScope E.emptyScope)
 
-getLocal :: Interp (LEnv)
-getLocal = snd <$> get
+leaveScope :: Interp ()
+leaveScope = do
+  gets E.popScope >>=
+    maybe (throwRawErr "Trying to leave global scope.")
+           put
 
-purgeLocalScope :: Interp ()
-purgeLocalScope = putLocal M.empty
-
-defineLocalVariable :: Ident -> Val SourcePos -> Interp ()
-defineLocalVariable id' = modify . second . E.pushValue id'
-
-defineGlobalVariable :: Ident -> Val SourcePos -> Interp ()
-defineGlobalVariable id' = modify . first . M.insert id'
-
-defineLocalVariables :: [(Ident, Val SourcePos)] -> Interp ()
-defineLocalVariables = mapM_ (uncurry defineLocalVariable)
-
-assignVariable :: Ident -> Val SourcePos -> Interp ()
-assignVariable id' val = do
-  res <- get
-  ifM (existsInLocalScope id')
-      (assignLocalVariable id' val)
-      (defineGlobalVariable id' val)
-
-assignLocalVariable :: Ident -> Val SourcePos -> Interp ()
-assignLocalVariable id' val = do
-  guardVariableExists (valPos val) id'
-  modify $ second (E.popValue id')
-  defineLocalVariable id' val
-
-
-purgeVarsFromLocalScope :: [Ident] -> Interp ()
-purgeVarsFromLocalScope localVars = modify $ second (E.popValues localVars)
-
-withLocalScope :: Env -> Interp a -> Interp a
-withLocalScope env action = do
-  currEnv <- get
-  put env
-  res <- action
-  put currEnv
+inLocalScope :: Interp a -> Interp a
+inLocalScope act = do
+  enterNewScope
+  res <- act
+  leaveScope
   return res
 
-lookupGlobalVar :: SourcePos -> Ident -> Interp (Val SourcePos)
-lookupGlobalVar p id' = do
-  globRes <- gets (M.lookup id' . fst)
-  case globRes of
-    Just val -> return val
-    Nothing -> throwVarError p id'
+
+
+assignVariable :: Ident -> Val SourcePos -> Interp ()
+assignVariable id' val =
+  gets (E.assignToVariable id' val) >>=
+    maybe (throwVarError (valPos val) id')
+          put
+        
+
 
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
-lookupVar p id' = do
-  localRes <- gets (E.peekValue id' . snd)
-  case localRes of
-    Just val -> return val
-    _        -> lookupGlobalVar p id'
+lookupVar p id' = 
+  gets (E.lookupVariable id') >>=
+    maybe (throwVarError p id')
+          return
 
 guardVariableExists :: SourcePos -> Ident -> Interp ()
 guardVariableExists p id' = lookupVar p id' >> return ()
@@ -148,7 +119,7 @@ data Val a =
   | VBool a Bool
   | VFloat a String
   | VNil a
-  | VClosure a Ident [Ident] (Statement a) LEnv
+  | VClosure a Ident [Ident] (Statement a) Env
   | VString a String
 
 truthy :: Val a -> Bool
@@ -207,13 +178,13 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        oldLocalEnv <- getLocal
+        oldEnv <- get
         args' <- mapM runEval args
-        putLocal env
+        put env
         when (length params /= length args) (throwFunErr p)
-        defineLocalVariables (zip params args')
+        defineVariables (zip params args')
         v <- interpStatement body
-        putLocal oldLocalEnv
+        put oldEnv
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
@@ -276,9 +247,59 @@ runEval (EBinOp p op e1 e2) = do
     (GreaterEqual, _, _) -> throwEvalErr p "numbers"
 
 
+continue ::  Interp (Either (Val SourcePos) ())
+continue = return $ Right ()
+
+interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+interpStatement (Return p Nothing)  = return $ Left (VNil p)
+interpStatement (Return p (Just e)) = Left <$> runEval e
+interpStatement (Print p e) = 
+  runEval e >>= liftIO . putStrLn . show >> continue
+interpStatement (ExpSt p e) = 
+  runEval e >> continue
+interpStatement (VarDecl p id' e) =
+  (maybe (return $ VNil p) runEval e >>= defineVariable id') >> continue
+interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
+interpStatement (If p pred then' else') = inLocalScope $ do
+  pred' <- runEval pred
+  if (truthy pred') 
+    then interpStatement then' 
+    else (maybe continue interpStatement else')
+interpStatement (While p pred body) = inLocalScope go
+  where
+    go = do
+      pred' <- runEval pred
+      if(truthy pred') 
+        then handleReturn (interpStatement body) go
+        else continue
+interpStatement (For p (init,pred,step) body) =
+  inLocalScope $ maybe continue interpStatement init >> go
+  where
+    go = do
+      pred' <- runEval pred
+      if truthy pred' 
+      then handleReturn 
+            (interpStatement body) 
+            ((maybe (return $ VNil p) runEval step) >> go)
+      else continue
+interpStatement (FunDecl p funId args body) = do
+  env <- get
+  defineVariable funId (VClosure p funId args body env)
+  continue
+
+
+interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
+interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
+  
+  
+handleReturn :: Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ())
+handleReturn action cont = action >>= (either (return . Left) (const $ cont))
+
+
+
 eval :: Exp SourcePos -> IO ()
 eval exp =
-  (flip evalStateT (M.empty,M.empty) . runExceptT $ runEval exp) >>=
+  (flip evalStateT E.emptyEnv . runExceptT $ runEval exp) >>=
     either 
       (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
       (putStrLn . show)
@@ -287,86 +308,11 @@ eval exp =
 
 interp :: [Statement SourcePos] -> IO ()
 interp sts = 
-  (flip evalStateT (M.empty,M.empty) . runExceptT $ mapM_ interpStatement sts) >>=
+  (flip evalStateT E.emptyEnv . runExceptT $ mapM_ interpStatement sts) >>=
     either 
       (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
       return
 
-continue ::  Interp (Either (Val SourcePos) ())
-continue = return $ Right ()
-
-interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpStatement (Return _ _) = undefined -- should not be called globally
-interpStatement (Print p e) = 
-  runEval e >>= liftIO . putStrLn . show >> continue
-interpStatement (ExpSt p e) = 
-  runEval e >> continue
-interpStatement (VarDecl p id' e) =
-  (maybe (return $ VNil p) runEval e >>= defineGlobalVariable id') >> continue
-interpStatement (Block p sts) = interpBlock sts
-interpStatement (If p pred then' else') = do
-  pred' <- runEval pred
-  if (truthy pred') 
-    then interpStatementsOf then' 
-    else (maybe continue interpStatementsOf else')
-interpStatement (While p pred body) = go
-  where
-    go = do
-      pred' <- runEval pred
-      if(truthy pred') 
-        then handleReturn (interpStatementsOf body) go
-        else continue
-interpStatement (For p (init,pred,step) body) =
-  maybe continue interpStatement init >> go
-  where
-    go = do
-      pred' <- runEval pred
-      if truthy pred' 
-      then handleReturn 
-            (interpStatementsOf body) 
-            ((maybe (return $ VNil p) runEval step) >> go)
-      else continue
-interpStatement (FunDecl p funId args body) = do
-  env <- getLocal
-  defineGlobalVariable funId (VClosure p funId args body env)
-  continue
-
-interpStatementsOf :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpStatementsOf = interpBlock . statementsOf
-  where
-    statementsOf :: Statement SourcePos -> [Statement SourcePos]
-    statementsOf (Block _ sts) = sts
-    statementsOf st            = [st]
-
--- refactor to use mapM
-interpBlock :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-interpBlock = go []
-  where 
-    go :: [Ident] -> [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-    go localVars [] = 
-      purgeVarsFromLocalScope localVars >>
-      continue
-    go localVars (ret@(Return p e) :_) =
-      case e of
-        Just e  -> do
-          v <- runEval e
-          purgeVarsFromLocalScope localVars
-          return $ Left v
-        Nothing ->
-          purgeVarsFromLocalScope localVars >>     
-            (return $ Left $ VNil p)
-    go localVars (FunDecl p funId args body :rest) = do
-      env <- getLocal
-      defineLocalVariable funId (VClosure p funId args body env)
-      go (funId : localVars) rest
-    go localVars ((VarDecl p id' v): rest) = do
-      v' <- maybe (return $ VNil p) runEval v
-      defineLocalVariable id'  v' >> go (id' : localVars) rest
-    go localVars (st:rest) = do
-      handleReturn (interpStatement st) (go localVars rest)
-
-handleReturn :: Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ())
-handleReturn action cont = action >>= (either (return . Left) (const $ cont))
 
 
 
