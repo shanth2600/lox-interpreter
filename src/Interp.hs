@@ -205,14 +205,17 @@ runEval (EFunCall p fun args) = do
     (VClosure p funId params body env) -> do
       args' <- mapM runEval args 
       when (length params /= length args) (throwFunErr p)
-      (v,env') <- withFunctionEnv env $
-          do
+      (v,env') <- withFunctionEnv env $ do
             defineVariables (zip params args')
-            interpStatement body
+            interpFuncBody body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
+    interpFuncBody :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+    interpFuncBody st = case st of
+      (Block _ sts) -> interpStatements sts
+      _             -> interpStatements [st]
     withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
     withFunctionEnv closureEnv action = do
       oldEnv <- get
