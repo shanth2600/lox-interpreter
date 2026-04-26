@@ -197,12 +197,16 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
+        oldEnv <- get
+        oldGlobal <- getGlobalScope
         args' <- mapM runEval args 
+        put (E.Env (oldGlobal NE.:| []))
         when (length params /= length args) (throwFunErr p)
-        v <- withFunctionEnv env $
-            inLocalScope $ do
-              defineVariables (zip params args')
-              interpStatement body
+        v <- inLocalScope $ do
+          defineVariables (zip params args')
+          interpStatement body
+        newGlobal <- getGlobalScope
+        put (E.insertGlobalScope newGlobal oldEnv)
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
 runEval (ENot p e)          = do
