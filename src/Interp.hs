@@ -175,14 +175,6 @@ displayNum nStr = case splitOn "." nStr of
       let dec' = dropWhileEnd (== '0') dec
       in if null dec' then "0" else dec'    
 
-withFunctionEnv :: Env -> Interp a -> Interp a
-withFunctionEnv closureEnv action = do
-  oldEnv <- get
-  put (E.Env $ E.globalScope oldEnv NE.:| [])
-  result <- action
-  newGlobal <- getGlobalScope
-  put (E.insertGlobalScope newGlobal oldEnv)
-  pure result
 
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
 runEval (EVar p id')        = lookupVar p id'
@@ -193,22 +185,6 @@ runEval (EString p str)     = return $ VString p str
 runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
--- runEval (EFunCall p fun args) = do
---   closure <- runEval fun
---   case closure of
---     (VClosure p funId params body env) -> do
---         oldEnv <- get
---         oldGlobal <- getGlobalScope
---         args' <- mapM runEval args 
---         put (E.Env (oldGlobal NE.:| []))
---         when (length params /= length args) (throwFunErr p)
---         v <- inLocalScope $ do
---           defineVariables (zip params args')
---           interpStatement body
---         newGlobal <- getGlobalScope
---         put (E.insertGlobalScope newGlobal oldEnv)
---         either return (const $ return (VNil p)) v
---     _ -> throwFunErr p  
 runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
@@ -221,6 +197,15 @@ runEval (EFunCall p fun args) = do
               interpStatement body
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
+  where
+    withFunctionEnv :: Env -> Interp a -> Interp a
+    withFunctionEnv closureEnv action = do
+      oldEnv <- get
+      put (E.insertGlobalScope (E.globalScope oldEnv) closureEnv)
+      result <- action
+      newGlobal <- getGlobalScope
+      put (E.insertGlobalScope newGlobal oldEnv)
+      pure result
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of
