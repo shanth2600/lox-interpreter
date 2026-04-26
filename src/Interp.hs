@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 module Interp where
 
 import Lib
@@ -360,9 +361,13 @@ interp :: [Statement SourcePos] -> IO ()
 interp sts = 
   (flip evalStateT E.emptyEnv . runExceptT $ mapM_ interpStatement sts) >>=
     either 
-      (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 65))
+      (\e -> hPutStrLn stderr (show e) >> exitOn e)
       return
 
+exitOn :: EvalError -> IO ()
+exitOn = \case
+  DeclError _ _ -> exitWith (ExitFailure 65)
+  _ -> exitWith (ExitFailure 70)
 
 
 
