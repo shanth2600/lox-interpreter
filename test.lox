@@ -1,11 +1,13 @@
-var a = 28;
-
-fun printAndModify() {
-  print a;
-  var a = 37;
-  print a;
+fun returnArg(x) {
+  return x;
 }
 
-print a;
-a = 80;
-printAndModify();
+fun returnFunCallWithArg(func, arg) {
+  return returnArg(func)(arg);
+}
+
+fun printArg(y) {
+  print y;
+}
+
+returnFunCallWithArg(printArg, "world");

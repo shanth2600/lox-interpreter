@@ -185,7 +185,7 @@ runEval (EFunCall p fun args) = do
         put (E.Env (NE.last scopes NE.:| []))
         when (length params /= length args) (throwFunErr p)
         defineVariables (zip params args')
-        v <- interpStatement body
+        v <- inLocalScope $ interpStatement body
         (E.Env newGlob) <- get
         put (E.Env $ NE.fromList ((NE.init scopes) ++ (NE.toList newGlob)))
         either return (const $ return (VNil p)) v
