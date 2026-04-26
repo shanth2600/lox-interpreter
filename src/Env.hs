@@ -29,6 +29,12 @@ emptyEnv = Env (emptyScope :| [])
 globalScope :: Env k v -> Scope k v
 globalScope (Env scopes) = last scopes
 
+currentScope :: Env k v -> Scope k v
+currentScope (Env (scope :| _)) = scope
+
+existsInCurrentScope :: Ord k => k -> Env k v -> Bool
+existsInCurrentScope k env = k `M.member` currentScope env
+
 insertGlobalScope :: Scope k v -> Env k v -> Env k v
 insertGlobalScope scope (Env scopes) = Env (fromList $ init scopes ++ [scope]) 
 

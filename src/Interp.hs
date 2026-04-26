@@ -43,7 +43,7 @@ import Control.Monad (void)
 data EvalError = 
     EvalError SourcePos String
   | VarNotFound SourcePos Ident
-  | DeclError SourcePos Ident
+  | DeclError SourcePos Ident String
   | ExpectedFunError SourcePos
   | MsgError SourcePos String
   | RawError String
@@ -54,8 +54,8 @@ instance Show EvalError where
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
-  show (DeclError p var) = 
-    printf "Error at '%s': Can't read local variable in its own initializer.\n[line %d]" (show var) (sourceLine p)
+  show (DeclError p var msg) = 
+    printf "Error at '%s': %s.\n[line %d]" (show var) msg (sourceLine p)
   show (MsgError p str) = 
     printf "%s.\n[line %d]" str (sourceLine p)
   show (RawError str) = str
@@ -70,8 +70,8 @@ type Interp a = ExceptT EvalError (StateT Env IO) a
 throwEvalErr :: SourcePos -> String -> Interp a
 throwEvalErr p s = throwError $ EvalError p s
 
-throwDeclErr :: SourcePos -> Ident -> Interp a
-throwDeclErr p var = throwError $ DeclError p var
+throwDeclErr :: SourcePos -> Ident -> String -> Interp a
+throwDeclErr p var msg = throwError $ DeclError p var msg
 
 throwFunErr :: SourcePos -> Interp a
 throwFunErr p = throwError $ MsgError p "Can only call functions and classes"
@@ -292,6 +292,7 @@ interpStatement (ExpSt p e) =
   runEval e >> continue
 interpStatement (VarDecl p id' e) = do
   guardCirularInit id' e
+  guardRedeclaration id'
   v <- maybe (return $ VNil p) runEval e
   case v of
     (VClosure p funId args body env) ->
@@ -299,12 +300,21 @@ interpStatement (VarDecl p id' e) = do
     _ ->
       defineVariable id' v >> continue
   where
+    guardRedeclaration :: Ident -> Interp ()
+    guardRedeclaration id' =
+      ifM (gets $ E.existsInCurrentScope id')
+          (throwDeclErr p id' "Already a variable with this name in this scope")
+          (return ())
+      
     guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
     guardCirularInit l r = do
       global <- amInGlobalScope 
       ifM (not <$> amInGlobalScope)
           (case r of
-            Just e -> if l `exprContains` e then throwDeclErr p id' else return ()
+            Just e -> 
+              if l `exprContains` e 
+                then throwDeclErr p id' "Can't read local variable in its own initializer" 
+                else return ()
             Nothing -> return ())
           (return ())
       where
@@ -366,7 +376,7 @@ interp sts =
 
 exitOn :: EvalError -> IO ()
 exitOn = \case
-  DeclError _ _ -> exitWith (ExitFailure 65)
+  DeclError _ _ _ -> exitWith (ExitFailure 65)
   _ -> exitWith (ExitFailure 70)
 
 
