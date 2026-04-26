@@ -206,7 +206,7 @@ runEval (EFunCall p fun args) = do
       args' <- mapM runEval args 
       when (length params /= length args) (throwFunErr p)
       (v,env') <- withFunctionEnv env $
-          inLocalScope $ do
+          do
             defineVariables (zip params args')
             interpStatement body
       assignVariable funId  (VClosure p funId params body env')
