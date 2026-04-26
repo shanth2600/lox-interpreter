@@ -69,6 +69,16 @@ data Exp n where
   ENil     :: n -> Exp n
   deriving (Functor)
 
+expVars :: Exp a -> [Ident]  
+expVars (ENeg _ e) = expVars e
+expVars (EBinOp _ _ e1 e2) = expVars e1 ++ expVars e2
+expVars (ENot _ e) = expVars e
+expVars (EVar _ id') = [id']
+expVars (EGroup _ e) = expVars e
+expVars (EFunCall _ f args) = expVars f ++ concatMap expVars args
+expVars (EAssmt _ _ e) = expVars e
+expVars _ = []
+
 expPos :: Exp n -> n
 expPos (ENum    n _)     = n
 expPos (EString n _)     = n
@@ -93,6 +103,7 @@ instance Show (Exp a) where
   show (ENot _ e)            = printf "(! %s)" (show e)
   show (ENeg _ e)            = printf "(- %s)" (show e)
   show (ENil _ )             = "nil"
+
 
 displayNum :: Double -> String 
 displayNum n = case splitOn "." nStr of

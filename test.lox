@@ -1,13 +1,13 @@
-fun makeCounter() {
-  var i = 0;
-  fun count() {
-    i = i + 4;
-    print i;
-  }
-
-  return count;
+fun returnArg(arg) {
+  return arg;
 }
 
-var counter = makeCounter();
-counter();
-counter();
+var b = "global";
+{
+  var a = "first";
+  var b = returnArg(b);
+  print b;
+}
+
+var b = b + " updated";
+print b;

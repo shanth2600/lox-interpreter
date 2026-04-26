@@ -9,7 +9,7 @@ import Numeric (showFFloat)
 
 import qualified Data.List.NonEmpty as NE
 
-import AST ( Exp (..), Op (..), Statement (..))
+import AST ( Exp (..), Op (..), Statement (..), expVars)
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
@@ -42,6 +42,7 @@ import Control.Monad (void)
 data EvalError = 
     EvalError SourcePos String
   | VarNotFound SourcePos Ident
+  | DeclError SourcePos Ident
   | ExpectedFunError SourcePos
   | MsgError SourcePos String
   | RawError String
@@ -52,6 +53,8 @@ instance Show EvalError where
     printf "Operand must be %s.\n[line %d]" expected (sourceLine p)
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
+  show (DeclError p var) = 
+    printf "Error at '%s': Can't read local variable in its own initializer.\n[line %d]" (show var) (sourceLine p)
   show (MsgError p str) = 
     printf "%s.\n[line %d]" str (sourceLine p)
   show (RawError str) = str
@@ -65,6 +68,9 @@ type Interp a = ExceptT EvalError (StateT Env IO) a
 
 throwEvalErr :: SourcePos -> String -> Interp a
 throwEvalErr p s = throwError $ EvalError p s
+
+throwDeclErr :: SourcePos -> Ident -> Interp a
+throwDeclErr p var = throwError $ DeclError p var
 
 throwFunErr :: SourcePos -> Interp a
 throwFunErr p = throwError $ MsgError p "Can only call functions and classes"
@@ -98,6 +104,11 @@ leaveScope = do
   gets E.popScope >>=
     maybe (throwRawErr "Trying to leave global scope.")
            put
+
+amInGlobalScope :: Interp Bool
+amInGlobalScope = do
+  (E.Env scopes) <- get 
+  return (NE.length scopes == 1)
 
 inLocalScope :: Interp a -> Interp a
 inLocalScope act = do
@@ -279,12 +290,25 @@ interpStatement (Print p e) =
 interpStatement (ExpSt p e) = 
   runEval e >> continue
 interpStatement (VarDecl p id' e) = do
+  guardCirularInit id' e
   v <- maybe (return $ VNil p) runEval e
   case v of
     (VClosure p funId args body env) ->
       defineVariable id' (VClosure p id' args body env) >> continue
     _ ->
       defineVariable id' v >> continue
+  where
+    guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
+    guardCirularInit l r = do
+      global <- amInGlobalScope 
+      ifM (not <$> amInGlobalScope)
+          (case r of
+            Just e -> if l `exprContains` e then throwDeclErr p id' else return ()
+            Nothing -> return ())
+          (return ())
+      where
+        exprContains :: Ident -> Exp SourcePos -> Bool
+        exprContains id' ex = id' `elem` (expVars ex)
 interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = inLocalScope $ do
   pred' <- runEval pred
