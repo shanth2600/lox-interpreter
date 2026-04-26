@@ -53,9 +53,11 @@ instance Show EvalError where
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
   show (MsgError p str) = 
     printf "%s.\n[line %d]" str (sourceLine p)
+  show (RawError str) = str
 
 
 type Env = E.Env Ident (Val SourcePos)
+type Scope = E.Scope Ident (Val SourcePos)
 
 
 type Interp a = ExceptT EvalError (StateT Env IO) a
@@ -80,6 +82,12 @@ defineVariable id' val = modify (E.declareVariable id' val)
 
 defineVariables :: [(Ident, Val SourcePos)] -> Interp ()
 defineVariables = modify . E.declareVariables
+
+getGlobalScope :: Interp (Scope)
+getGlobalScope = gets E.globalScope
+
+modifyGlobalScope :: Scope -> Interp ()
+modifyGlobalScope scope = modify (E.insertGlobalScope scope)
 
 enterNewScope :: Interp ()
 enterNewScope = modify (E.pushNewScope E.emptyScope)
@@ -180,18 +188,19 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        (E.Env scopes) <- get
-        args' <- mapM runEval args
-        put (E.Env (NE.last scopes NE.:| []))
+        oldEnv <- get
+        oldGlobal <- getGlobalScope
+        args' <- mapM runEval args 
+        put (E.Env (oldGlobal NE.:| []))
         when (length params /= length args) (throwFunErr p)
+        enterNewScope
         defineVariables (zip params args')
-        v <- inLocalScope $ interpStatement body
-        (E.Env newGlob) <- get
-        put (E.Env $ NE.fromList ((NE.init scopes) ++ (NE.toList newGlob)))
+        v <- interpStatement body
+        leaveScope
+        newGlobal <- getGlobalScope
+        put (E.insertGlobalScope newGlobal oldEnv)
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
-  where
-    unpackVarId (EVar _ id') = id'
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of

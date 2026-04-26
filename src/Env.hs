@@ -5,8 +5,9 @@ module Env where
 
 
 import Control.Monad.Except
+import Prelude hiding (last, init)
 import Data.List.NonEmpty
-    ( NonEmpty(..), cons, fromList, toList, uncons )
+    ( NonEmpty(..), cons, fromList, toList, uncons, last, init)
 import qualified Data.Map as M
 import Text.Printf (printf)
 import Data.Maybe (isNothing, isJust)
@@ -24,6 +25,12 @@ emptyScope = M.empty
 
 emptyEnv :: Env k v
 emptyEnv = Env (emptyScope :| [])
+
+globalScope :: Env k v -> Scope k v
+globalScope (Env scopes) = last scopes
+
+insertGlobalScope :: Scope k v -> Env k v -> Env k v
+insertGlobalScope scope (Env scopes) = Env (fromList $ init scopes ++ [scope]) 
 
 declareVariable :: forall k v. Ord k => k -> v -> Env k v -> Env k v
 declareVariable k v (Env (scope :| rest)) =
