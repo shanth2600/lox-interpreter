@@ -178,7 +178,7 @@ displayNum nStr = case splitOn "." nStr of
 withFunctionEnv :: Env -> Interp a -> Interp a
 withFunctionEnv closureEnv action = do
   oldEnv <- get
-  put closureEnv
+  put (E.Env $ E.globalScope oldEnv NE.:| [])
   result <- action
   newGlobal <- getGlobalScope
   put (E.insertGlobalScope newGlobal oldEnv)
@@ -193,20 +193,32 @@ runEval (EString p str)     = return $ VString p str
 runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
+-- runEval (EFunCall p fun args) = do
+--   closure <- runEval fun
+--   case closure of
+--     (VClosure p funId params body env) -> do
+--         oldEnv <- get
+--         oldGlobal <- getGlobalScope
+--         args' <- mapM runEval args 
+--         put (E.Env (oldGlobal NE.:| []))
+--         when (length params /= length args) (throwFunErr p)
+--         v <- inLocalScope $ do
+--           defineVariables (zip params args')
+--           interpStatement body
+--         newGlobal <- getGlobalScope
+--         put (E.insertGlobalScope newGlobal oldEnv)
+--         either return (const $ return (VNil p)) v
+--     _ -> throwFunErr p  
 runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        oldEnv <- get
-        oldGlobal <- getGlobalScope
         args' <- mapM runEval args 
-        put (E.Env (oldGlobal NE.:| []))
         when (length params /= length args) (throwFunErr p)
-        v <- inLocalScope $ do
-          defineVariables (zip params args')
-          interpStatement body
-        newGlobal <- getGlobalScope
-        put (E.insertGlobalScope newGlobal oldEnv)
+        v <- withFunctionEnv env $
+            inLocalScope $ do
+              defineVariables (zip params args')
+              interpStatement body
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
 runEval (ENot p e)          = do
