@@ -1,23 +1,11 @@
-var baz = "after";
-{
-  var baz = "before";
+var a = 28;
 
-  for (var baz = 0;
-       baz < 1;
-       baz = baz + 1) {
-    print baz;
-    var baz = -1;
-    print baz;
-  }
+fun printAndModify() {
+  print a;
+  var a = 37;
+  print a;
 }
 
-{
-  for (var baz = 0; baz > 0; baz = baz + 1) {}
-
-  var baz = "after";
-  print baz;
-
-  for (baz = 0; baz < 1; baz = baz + 1) {
-    print baz;
-  }
-}
+print a;
+a = 80;
+printAndModify();

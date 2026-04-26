@@ -7,6 +7,8 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Env as E
 import Numeric (showFFloat)
 
+import qualified Data.List.NonEmpty as NE
+
 import AST ( Exp (..), Op (..), Statement (..))
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
@@ -178,13 +180,14 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-        oldEnv <- get
+        (E.Env scopes) <- get
         args' <- mapM runEval args
-        put env
+        put (E.Env (NE.last scopes NE.:| []))
         when (length params /= length args) (throwFunErr p)
         defineVariables (zip params args')
         v <- interpStatement body
-        put oldEnv
+        (E.Env newGlob) <- get
+        put (E.Env $ NE.fromList ((NE.init scopes) ++ (NE.toList newGlob)))
         either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
