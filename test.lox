@@ -1,13 +1,13 @@
-fun returnArg(arg) {
-  return arg;
+fun makeCounter() {
+  var i = 0;
+  fun count() {
+    i = i + 4;
+    print i;
+  }
+
+  return count;
 }
 
-fun returnFunCallWithArg(func, arg) {
-  return returnArg(func)(arg);
-}
-
-fun printArg(arg) {
-  print arg;
-}
-
-returnFunCallWithArg(printArg, "baz");
+var counter = makeCounter();
+counter();
+counter();

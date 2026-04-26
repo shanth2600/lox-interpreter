@@ -34,6 +34,7 @@ import Data.Bifunctor (first, second, Bifunctor (bimap))
 import Control.Monad.Extra (ifM)
 import Control.Monad ((>=>))
 import Data.Either (fromRight)
+import Control.Monad (void)
 
 
 
@@ -159,7 +160,7 @@ instance Show (Val a) where
   show (VBool _ True)  = "true"
   show (VBool _ False) = "false"
   show (VNil _)        = "nil"
-  show (VClosure _ funId _ _ _) = printf "<fn %s>" funId
+  show (VClosure _ funId _ body _) = printf "<fn %s>" funId
   show (VString _ str) = str
   show (VFloat _ str)  = str
 
@@ -187,25 +188,28 @@ runEval (EFunCall p (EVar _ "clock") []) = do
   return (VNum p (realToFrac t))
 runEval (EFunCall p fun args) = do
   closure <- runEval fun
+  env <- get
   case closure of
     (VClosure p funId params body env) -> do
-        args' <- mapM runEval args 
-        when (length params /= length args) (throwFunErr p)
-        v <- withFunctionEnv env $
-            inLocalScope $ do
-              defineVariables (zip params args')
-              interpStatement body
-        either return (const $ return (VNil p)) v
+      args' <- mapM runEval args 
+      when (length params /= length args) (throwFunErr p)
+      (v,env') <- withFunctionEnv env $
+          inLocalScope $ do
+            defineVariables (zip params args')
+            interpStatement body
+      assignVariable funId  (VClosure p funId params body env')
+      either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
-    withFunctionEnv :: Env -> Interp a -> Interp a
+    withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
     withFunctionEnv closureEnv action = do
       oldEnv <- get
       put (E.insertGlobalScope (E.globalScope oldEnv) closureEnv)
       result <- action
-      newGlobal <- getGlobalScope
-      put (E.insertGlobalScope newGlobal oldEnv)
-      pure result
+      closureEnv' <- get
+      let newEnv = E.insertGlobalScope (E.globalScope closureEnv') oldEnv
+      put newEnv
+      pure (result, closureEnv')
 runEval (ENot p e)          = do
   e' <- runEval e 
   case e' of
@@ -274,8 +278,13 @@ interpStatement (Print p e) =
   runEval e >>= liftIO . putStrLn . show >> continue
 interpStatement (ExpSt p e) = 
   runEval e >> continue
-interpStatement (VarDecl p id' e) =
-  (maybe (return $ VNil p) runEval e >>= defineVariable id') >> continue
+interpStatement (VarDecl p id' e) = do
+  v <- maybe (return $ VNil p) runEval e
+  case v of
+    (VClosure p funId args body env) ->
+      defineVariable id' (VClosure p id' args body env) >> continue
+    _ ->
+      defineVariable id' v >> continue
 interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = inLocalScope $ do
   pred' <- runEval pred

@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DeriveFunctor #-}
 module AST where
 
 import Lib
@@ -52,7 +53,7 @@ data Statement n =
   | For n ((Maybe (Statement n)), (Exp n), (Maybe (Exp n))) (Statement n)
   | FunDecl n Ident [Ident] (Statement SourcePos)
   | Return n (Maybe (Exp n))
-  deriving Show
+  deriving (Show, Functor)
 
 data Exp n where
   ENum     :: n -> Double -> Exp n
@@ -66,6 +67,7 @@ data Exp n where
   EFunCall :: n -> Exp n -> [Exp n] -> Exp n
   EAssmt   :: n -> Ident -> Exp n -> Exp n
   ENil     :: n -> Exp n
+  deriving (Functor)
 
 expPos :: Exp n -> n
 expPos (ENum    n _)     = n
