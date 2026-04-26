@@ -360,7 +360,7 @@ interp :: [Statement SourcePos] -> IO ()
 interp sts = 
   (flip evalStateT E.emptyEnv . runExceptT $ mapM_ interpStatement sts) >>=
     either 
-      (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
+      (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 65))
       return
 
 

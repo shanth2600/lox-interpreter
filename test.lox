@@ -1,13 +1,5 @@
-fun returnArg(arg) {
-  return arg;
-}
-
-var b = "global";
-{
-  var a = "first";
-  var b = returnArg(b);
-  print b;
-}
-
-var b = b + " updated";
-print b;
+ var a = "outer";
+ 
+ {
+   var a = a;
+ }
