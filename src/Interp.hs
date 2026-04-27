@@ -144,6 +144,7 @@ data Val a =
   | VFloat a String
   | VNil a
   | VClosure a Ident [Ident] (Statement a) Env
+  | VClass a Ident
   | VString a String
 
 truthy :: Val a -> Bool
@@ -176,6 +177,7 @@ instance Show (Val a) where
   show (VClosure _ funId _ body _) = printf "<fn %s>" funId
   show (VString _ str) = str
   show (VFloat _ str)  = str
+  show (VClass _ id)   = id
 
 displayNum :: String -> String 
 displayNum nStr = case splitOn "." nStr of
@@ -325,6 +327,10 @@ interpStatement (For p (init,pred,step) body) =
 interpStatement (FunDecl p funId args body) = do
   env <- get
   defineVariable funId (VClosure p funId args body env)
+  continue
+interpStatement (ClassDecl p classId) = do
+  env <- get
+  defineVariable classId (VClass p classId)
   continue
 
 

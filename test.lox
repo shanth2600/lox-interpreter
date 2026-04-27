@@ -1,14 +1,2 @@
-fun foo() {
-  if (true) {
-    return "early return";
-  }
-
-  for (var i = 0; i < 10; i = i + 1) {
-    return "loop return";
-  }
-}
-
-if (true) {
-  return "conditional return";
-  // expect compile error
-}
+class Spaceship {}
+print Spaceship;

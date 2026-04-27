@@ -19,7 +19,7 @@ import Control.Monad.Identity
 import Text.Parsec.Error (errorMessages, messageString)
 import Text.Printf (printf)
 import Data.Either.Extra (mapLeft)
-import Text.Parsec.Token (GenLanguageDef(identLetter))
+import Text.Parsec.Token (GenLanguageDef(identLetter), GenTokenParser (identifier))
 
 type ExpS = Exp SourcePos
 
@@ -37,6 +37,7 @@ statement' :: Parser (Statement SourcePos)
 statement' = 
   (singleStatment <* token' T.Semicolon) <|>
   funDecl <|>
+  classDecl <|>
   ifStatement <|>
   whileLoop <|>
   forLoop <|>
@@ -79,6 +80,15 @@ forLoop = do
         optionMaybe expr)
   body <- statement'
   return $ For p c body
+
+classDecl :: Parser (Statement SourcePos)  
+classDecl = do
+  _  <- reserved' "class"
+  (EVar p id') <- eVar
+  _ <- token' T.LeftBrace
+  _ <- token' T.RightBrace
+  return $ ClassDecl p id'
+
 
 funDecl :: Parser (Statement SourcePos)
 funDecl = do
