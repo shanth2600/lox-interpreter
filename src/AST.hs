@@ -55,6 +55,15 @@ data Statement n =
   | Return n (Maybe (Exp n))
   deriving (Show, Functor)
 
+stPos :: Statement n -> n
+stPos (Return  n _)       = n
+stPos (Print   n _)       = n
+stPos (ExpSt   n _)       = n
+stPos (VarDecl n _ _)     = n
+stPos (Block   n _)       = n
+stPos (If      n _ _ _)   = n
+stPos (While   n _ _)     = n
+
 data Exp n where
   ENum     :: n -> Double -> Exp n
   ENeg     :: n -> Exp n -> Exp n

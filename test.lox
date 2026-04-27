@@ -1,14 +1,10 @@
-fun foo() {
-  if (true) {
-    return "early return";
-  }
-
-  for (var i = 0; i < 10; i = i + 1) {
-    return "loop return";
-  }
+{
+  return "not allowed in a block either";
 }
 
-if (true) {
-  return "conditional return";
-  // expect compile error
+fun allowed() {
+  if (true) {
+    return "this is fine";
+  }
+  return;
 }

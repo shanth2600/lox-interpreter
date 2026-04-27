@@ -10,7 +10,7 @@ import Numeric (showFFloat)
 
 import qualified Data.List.NonEmpty as NE
 
-import AST ( Exp (..), Op (..), Statement (..), expVars)
+import AST ( Exp (..), Op (..), Statement (..), expVars, stPos)
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
@@ -287,14 +287,7 @@ continue = return $ Right ()
 
 interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
 interpStatement (Return p mayE)  = do
-  guardReturnFromTopLevel
   maybe (return $ Left (VNil p)) (fmap Left . runEval) mayE
-  where
-    guardReturnFromTopLevel :: Interp ()
-    guardReturnFromTopLevel = do
-      ifM (amInGlobalScope)
-          (throwDeclErr p "return" " Can't return from top-level code")
-          (return ())
 interpStatement (Print p e) = 
   runEval e >>= liftIO . putStrLn . show >> continue
 interpStatement (ExpSt p e) = 
@@ -310,8 +303,8 @@ interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
-    then interpInCurrentScope then' 
-    else (maybe continue interpInCurrentScope else')
+    then interpBlockInCurrentScope then' 
+    else (maybe continue interpBlockInCurrentScope else')
 interpStatement (While p pred body) = inLocalScope go
   where
     go = do
@@ -339,13 +332,39 @@ interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
 interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
   
 
-interpInCurrentScope :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpInCurrentScope = \case
+interpBlockInCurrentScope :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+interpBlockInCurrentScope = \case
   (Block _ sts) -> interpStatements sts
   st            -> interpStatements [st]
 
 lintStatemnts :: [Statement SourcePos] -> Interp ()
-lintStatemnts sts = mapM_ lintStatement sts >> put (E.emptyEnv)
+lintStatemnts sts = 
+  lintTopLevelStatements sts >> 
+    mapM_ lintStatement sts >> 
+      put (E.emptyEnv)
+
+lintTopLevelStatements :: [Statement SourcePos] -> Interp ()
+lintTopLevelStatements sts =  lintTopLevelBlockReturns sts >>  lintTopLevelReturns sts
+
+lintTopLevelBlockReturns :: [Statement SourcePos] -> Interp ()
+lintTopLevelBlockReturns sts =
+  if (not . null) blkReturns
+    then throwDeclErr (stPos $ head blkReturns) "return" " Can't return from top-level code"
+    else return ()
+  where
+    blkReturns :: [Statement SourcePos]
+    blkReturns = [rets | (Block _ sts') <- sts, rets <- returns sts']
+
+lintTopLevelReturns :: [Statement SourcePos] -> Interp ()
+lintTopLevelReturns sts = 
+  if (not . null) rets
+    then throwDeclErr (stPos $ head rets) "return" " Can't return from top-level code"
+    else return ()
+  where
+    rets = returns sts
+
+returns :: [Statement SourcePos] -> [Statement SourcePos]
+returns sts = [ ret | ret@(Return _ _) <- sts]
 
 lintStatement :: Statement SourcePos -> ExceptT EvalError (StateT Env IO) ()
 lintStatement (VarDecl p id' e) = do
