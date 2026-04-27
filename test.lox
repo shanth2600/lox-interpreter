@@ -1,5 +1,3 @@
- var a = "outer";
- 
- {
-   var a = a;
- }
+fun foo(a) {
+  var a;
+}

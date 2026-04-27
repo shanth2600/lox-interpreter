@@ -14,7 +14,7 @@ import AST ( Exp (..), Op (..), Statement (..), expVars)
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
-import Data.List (dropWhileEnd, intercalate)
+import Data.List (dropWhileEnd, intercalate, intersect)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
 import Control.Monad.Except (Except, runExcept, ExceptT (..), runExceptT)
@@ -207,15 +207,11 @@ runEval (EFunCall p fun args) = do
       when (length params /= length args) (throwFunErr p)
       (v,env') <- withFunctionEnv env $ do
             defineVariables (zip params args')
-            interpFuncBody body
+            interpStatement body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
     _ -> throwFunErr p
   where
-    interpFuncBody :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-    interpFuncBody st = case st of
-      (Block _ sts) -> interpStatements sts
-      _             -> interpStatements [st]
     withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
     withFunctionEnv closureEnv action = do
       oldEnv <- get
@@ -347,9 +343,21 @@ interpStatement (For p (init,pred,step) body) =
             ((maybe (return $ VNil p) runEval step) >> go)
       else continue
 interpStatement (FunDecl p funId args body) = do
+  guardDeclaration
   env <- get
   defineVariable funId (VClosure p funId args body env)
   continue
+  where
+    funVarDecls :: Statement SourcePos -> [Ident]
+    funVarDecls (VarDecl _ id' _) = [id']
+    funVarDecls (Block n sts) = [ id' | (VarDecl _ id' _) <- sts]
+    guardDeclaration :: Interp ()
+    guardDeclaration = 
+      if (not . null) conflicts
+        then throwDeclErr p (head conflicts) "Can't read local variable in its own initializer"
+        else return ()
+      where
+        conflicts = args `intersect` (funVarDecls body)
 
 
 interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
