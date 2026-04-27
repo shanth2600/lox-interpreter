@@ -200,15 +200,16 @@ runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
 runEval (EFunCall p fun args) = do
-  closure <- runEval fun
   env <- get
+  closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
       args' <- mapM runEval args 
       when (length params /= length args) (throwFunErr p)
       (v,env') <- withFunctionEnv env $ do
-            defineVariables (zip params args')
-            interpStatement body
+            inLocalScope $ do
+              defineVariables (zip params args')
+              interpStatement body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
     _ -> throwFunErr p
