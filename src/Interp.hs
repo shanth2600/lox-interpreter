@@ -307,7 +307,7 @@ interpStatement (VarDecl p id' e) = do
     _ ->
       defineVariable id' v >> continue
 interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
-interpStatement (If p pred then' else') = inLocalScope $ do
+interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
     then interpStatement then' 
