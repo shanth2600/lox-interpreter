@@ -14,7 +14,7 @@ import AST ( Exp (..), Op (..), Statement (..), expVars)
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
-import Data.List (dropWhileEnd, intercalate, intersect, group)
+import Data.List (dropWhileEnd, intercalate, intersect, group, sort)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
 import Control.Monad.Except (Except, runExcept, ExceptT (..), runExceptT)
@@ -55,7 +55,7 @@ instance Show EvalError where
   show (VarNotFound p var) = 
     printf "Undefined variable '%s'.\n[line %d]" var (sourceLine p)
   show (DeclError p var msg) = 
-    printf "Error at '%s': %s.\n[line %d]" (show var) msg (sourceLine p)
+    printf "Error at '%s': %s.\n[line %d]" var msg (sourceLine p)
   show (MsgError p str) = 
     printf "%s.\n[line %d]" str (sourceLine p)
   show (RawError str) = str
@@ -343,6 +343,7 @@ interpStatement (For p (init,pred,step) body) =
             ((maybe (return $ VNil p) runEval step) >> go)
       else continue
 interpStatement (FunDecl p funId args body) = do
+  guardArgNameConflict
   guardDeclaration
   env <- get
   defineVariable funId (VClosure p funId args body env)
@@ -357,7 +358,7 @@ interpStatement (FunDecl p funId args body) = do
         then throwDeclErr p (head argConflicts) "Already a variable with this name in this scope"
         else return ()
         where
-          argConflicts = concat $ catMaybes $ map tailMay (group args )
+          argConflicts = concat $ catMaybes $ map tailMay (group $ sort args)
     guardDeclaration :: Interp ()
     guardDeclaration = 
       if (not . null) conflicts
