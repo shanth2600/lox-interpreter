@@ -1,8 +1,16 @@
-// First declaration of variable 'a' in global
-// scope
-var a = "value";
+fun outer() {
+  // Declare variable 'a' in outer function scope
+  var a = "outer";
 
-// Redeclaring 'a' with its own value should be
-// allowed in global scope
-var a = a;
-print a; // this should print "value"
+  // Inner function with its own scope
+  fun inner() {
+    // Attempting to declare local 'a' initialized
+    // with itself
+    var a = a; // expect compile error
+    print a;
+  }
+
+  inner();
+}
+
+outer();

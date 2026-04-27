@@ -344,7 +344,6 @@ lintStatement (VarDecl p id' e) = do
     exprContains id' ex = id' `elem` (expVars ex)
     guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
     guardCirularInit l r = do
-      amInGlobalScope 
       ifM (not <$> amInGlobalScope)
           (case r of
             Just e -> 
@@ -356,6 +355,7 @@ lintStatement (VarDecl p id' e) = do
 lintStatement (FunDecl p funId args body) = do
   guardArgNameConflict
   guardDeclaration
+  lintStatement body
   where
     funVarDecls :: Statement SourcePos -> [Ident]
     funVarDecls (VarDecl _ id' _) = [id']
