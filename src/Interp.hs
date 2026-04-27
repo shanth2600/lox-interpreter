@@ -331,20 +331,20 @@ lintStatemnts sts = mapM_ lintStatement sts >> put (E.emptyEnv)
 
 lintStatement :: Statement SourcePos -> ExceptT EvalError (StateT Env IO) ()
 lintStatement (VarDecl p id' e) = do
-  defineVariable id' (VNil p)
   guardCirularInit id' e
   guardRedeclaration id'
+  defineVariable id' (VNil p)
   where
     guardRedeclaration :: Ident -> Interp ()
     guardRedeclaration id' =
-      ifM (gets $ E.existsInCurrentScope id')
+      ifM ((&&) <$> (gets $ E.existsInCurrentScope id') <*> (not <$> amInGlobalScope))
           (throwDeclErr p id' "Already a variable with this name in this scope")
           (return ())
     exprContains :: Ident -> Exp SourcePos -> Bool
     exprContains id' ex = id' `elem` (expVars ex)
     guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
     guardCirularInit l r = do
-      global <- amInGlobalScope 
+      amInGlobalScope 
       ifM (not <$> amInGlobalScope)
           (case r of
             Just e -> 

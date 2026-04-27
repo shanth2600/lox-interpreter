@@ -1,9 +1,8 @@
+// First declaration of variable 'a' in global
+// scope
+var a = "value";
 
-{
-  // First declaration in local scope
-  var a = "1";
-
-  // Attempting to redeclare in local scope
-  var a = "2"; // This should be a compile error
-  print a;
-}
+// Redeclaring 'a' with its own value should be
+// allowed in global scope
+var a = a;
+print a; // this should print "value"
