@@ -303,8 +303,8 @@ interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
-    then interpBlockInCurrentScope then' 
-    else (maybe continue interpBlockInCurrentScope else')
+    then interpStatement then' 
+    else (maybe continue interpStatement else')
 interpStatement (While p pred body) = inLocalScope go
   where
     go = do
@@ -330,12 +330,7 @@ interpStatement (FunDecl p funId args body) = do
 
 interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
 interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
-  
 
-interpBlockInCurrentScope :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpBlockInCurrentScope = \case
-  (Block _ sts) -> interpStatements sts
-  st            -> interpStatements [st]
 
 lintStatemnts :: [Statement SourcePos] -> Interp ()
 lintStatemnts sts = 
@@ -344,16 +339,7 @@ lintStatemnts sts =
       put (E.emptyEnv)
 
 lintTopLevelStatements :: [Statement SourcePos] -> Interp ()
-lintTopLevelStatements sts =  lintTopLevelBlockReturns sts >>  lintTopLevelReturns sts
-
-lintTopLevelBlockReturns :: [Statement SourcePos] -> Interp ()
-lintTopLevelBlockReturns sts =
-  if (not . null) blkReturns
-    then throwDeclErr (stPos $ head blkReturns) "return" " Can't return from top-level code"
-    else return ()
-  where
-    blkReturns :: [Statement SourcePos]
-    blkReturns = [rets | (Block _ sts') <- sts, rets <- returns sts']
+lintTopLevelStatements sts =  lintTopLevelReturns sts
 
 lintTopLevelReturns :: [Statement SourcePos] -> Interp ()
 lintTopLevelReturns sts = 
@@ -361,10 +347,19 @@ lintTopLevelReturns sts =
     then throwDeclErr (stPos $ head rets) "return" " Can't return from top-level code"
     else return ()
   where
-    rets = returns sts
+    returns :: [Statement SourcePos] -> [Statement SourcePos]
+    returns sts = [ ret | ret@(Return _ _) <- sts]
+    rets = returns sts ++ blkReturns ++ ifStms
+    blkReturns = [rets | (Block _ sts') <- sts, rets <- returns sts']
+    ifStms =  [rets | if'@(If _ _ _ _) <- sts, rets <- returns (stmtsInIf if')]
 
-returns :: [Statement SourcePos] -> [Statement SourcePos]
-returns sts = [ ret | ret@(Return _ _) <- sts]
+stmtsInIf :: Statement SourcePos -> [Statement SourcePos]
+stmtsInIf (If _ _ then' else') = stmsOf then' ++ (maybe [] stmsOf else')
+    where
+      stmsOf (Block _ sts) = sts
+      stmsOf st            = [st]
+stmtsInIf _ = []
+
 
 lintStatement :: Statement SourcePos -> ExceptT EvalError (StateT Env IO) ()
 lintStatement (VarDecl p id' e) = do
