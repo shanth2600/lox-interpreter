@@ -182,7 +182,7 @@ instance Show (Val a) where
   show (VString _ str)  = str
   show (VFloat _ str)   = str
   show (VClass _ id)    = id
-  show (VInstance _ id) = "instance " ++ id
+  show (VInstance _ id) = id ++ " instance"
 
 displayNum :: String -> String 
 displayNum nStr = case splitOn "." nStr of
