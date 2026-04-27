@@ -1,9 +1,22 @@
-class Spaceship {}
-var falcon = Spaceship();
+class Wizard {}
+var gandalf = Wizard();
 
-falcon.name = "Millennium Falcon";
-falcon.speed = 75.5;
+gandalf.color = "Grey";
+gandalf.power = nil;
+print gandalf.color;
 
-print "Ship details:";
-print falcon.name;
-print falcon.speed;
+// functions should be able to accept class
+// instances and get or set properties on them
+fun promote(wizard) {
+
+  if (true) {
+    wizard.power = 100;
+    wizard.color = "White";
+  } else {
+    wizard.power = 0;
+  }
+}
+
+promote(gandalf);
+print gandalf.color;
+print gandalf.power;

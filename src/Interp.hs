@@ -122,18 +122,24 @@ inLocalScope act = do
 
 
 assignVariable :: Ident -> Val SourcePos -> Interp ()
-assignVariable id' val =
-  gets (E.assignToVariable id' val) >>=
-    maybe (throwVarError (valPos val) id')
-          put
-        
-
+assignVariable id' val = do
+  env <- get
+  oldVal <- lookupVar (valPos val) id'
+  case oldVal of
+    (VInstance _ instId _ _) -> handleAssign instId env
+    _                        -> handleAssign id' env
+  where
+    handleAssign id' env = maybe (throwVarError (valPos val) id') put (E.assignToVariable id' val env)
+          
 
 lookupVar :: SourcePos -> Ident -> Interp (Val SourcePos)
-lookupVar p id' = 
-  gets (E.lookupVariable id') >>=
-    maybe (throwVarError p id')
-          return
+lookupVar p id' = do
+  res <- gets (E.lookupVariable id')
+  case res of
+    Nothing             -> throwVarError p id'
+    (Just (VRef refId)) -> lookupVar p refId
+    (Just v)            -> return v
+    
 
 guardVariableExists :: SourcePos -> Ident -> Interp ()
 guardVariableExists p id' = lookupVar p id' >> return ()
@@ -145,7 +151,8 @@ data Val a =
   | VNil a
   | VClosure a Ident [Ident] (Statement a) Env
   | VClass a Ident
-  | VInstance a Ident Scope
+  | VInstance a Ident Ident Scope
+  | VRef Ident
   | VString a String
 
 truthy :: Val a -> Bool
@@ -170,7 +177,7 @@ valPos (VNil a)               = a
 valPos (VString a _)          = a
 valPos (VClosure a _ _ _ _)   = a
 valPos (VClass a _)           = a
-valPos (VInstance a _ _)      = a
+valPos (VInstance a _ _ _)      = a
 
 instance Show (Val a) where
   show :: Val a -> String
@@ -182,7 +189,8 @@ instance Show (Val a) where
   show (VString _ str)    = str
   show (VFloat _ str)     = str
   show (VClass _ id)      = id
-  show (VInstance _ id _) = id ++ " instance"
+  show (VRef id)          = "ref: " ++ id
+  show (VInstance _ _ id _) = id ++ " instance"
 
 displayNum :: String -> String 
 displayNum nStr = case splitOn "." nStr of
@@ -200,9 +208,9 @@ displayNum nStr = case splitOn "." nStr of
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
 runEval (EVar p id')         = lookupVar p id'
 runEval (EObjFld p obId fld) = do
-  (VInstance _ _ env) <- lookupVar p obId
+  (VInstance _ _ _ env) <- lookupVar p obId
   case M.lookup fld env of
-    Nothing -> error $ "Object has no field: " ++ fld
+    Nothing -> error $ printf "Object (%s) has no field: (%s)" obId fld
     Just v  -> return v
 runEval (ENil p)             = return $ VNil p
 runEval (ENum p n)           = return $ VNum p n
@@ -216,17 +224,27 @@ runEval (EFunCall p fun args) = do
   closure <- runEval fun
   case closure of
     (VClosure p funId params body env) -> do
-      args' <- mapM runEval args 
       when (length params /= length args) (throwFunErr p)
-      (v,env') <- withFunctionEnv env $ do
-            inLocalScope $ do
-              defineVariables (zip params args')
-              interpStatement body
+      args' <- evalArgs args
+      (v,env') <- 
+        withFunctionEnv env $
+          inLocalScope $ do
+            defineVariables (zip params args')
+            interpStatement body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
-    (VClass _ clsId) -> return (VInstance p clsId E.emptyScope)
+    (VClass _ clsId) -> return (VInstance p "" clsId E.emptyScope)
     _ -> throwFunErr p
   where
+    evalArgs :: [Exp SourcePos] -> Interp [Val SourcePos]
+    evalArgs = mapM evalArg
+      where
+        evalArg :: Exp SourcePos -> Interp (Val SourcePos)
+        evalArg arg = do
+          argVal <- runEval arg
+          case (arg, argVal) of
+            (EVar _ id', VInstance _ _ _ _) -> return $ VRef id'
+            _                               -> return argVal
     withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
     withFunctionEnv closureEnv action = do
       oldEnv <- get
@@ -256,8 +274,8 @@ runEval (EBinOp p Assign l r) = do
       assignVariable id' r'
       return r'
     EObjFld p obId fld -> do
-      (VInstance p _ env) <- lookupVar p obId
-      assignVariable obId (VInstance p obId (M.insert fld r' env))
+      (VInstance p instId clsId env) <- lookupVar p obId
+      assignVariable obId (VInstance p instId clsId (M.insert fld r' env))
       return r'
     _ -> throwEvalErr p "variable"
   return r'
@@ -314,6 +332,8 @@ interpStatement (VarDecl p id' e) = do
   case v of
     (VClosure p funId args body env) ->
       defineVariable id' (VClosure p id' args body env) >> continue
+    (VInstance p instId clsId env) ->
+      defineVariable id' (VInstance p id' clsId env) >> continue
     _ ->
       defineVariable id' v >> continue
 interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
