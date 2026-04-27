@@ -286,8 +286,15 @@ continue = return $ Right ()
 
 
 interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
-interpStatement (Return p Nothing)  = return $ Left (VNil p)
-interpStatement (Return p (Just e)) = Left <$> runEval e
+interpStatement (Return p mayE)  = do
+  guardReturnFromTopLevel
+  maybe (return $ Left (VNil p)) (fmap Left . runEval) mayE
+  where
+    guardReturnFromTopLevel :: Interp ()
+    guardReturnFromTopLevel = 
+      ifM (amInGlobalScope)
+          (throwDeclErr p "return" " Can't return from top-level code")
+          (return ())
 interpStatement (Print p e) = 
   runEval e >>= liftIO . putStrLn . show >> continue
 interpStatement (ExpSt p e) = 
