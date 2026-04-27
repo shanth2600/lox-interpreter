@@ -1,3 +1,9 @@
-fun foo(arg, arg) { 
-  "body";
+
+{
+  // First declaration in local scope
+  var a = "1";
+
+  // Attempting to redeclare in local scope
+  var a = "2"; // This should be a compile error
+  print a;
 }

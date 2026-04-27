@@ -36,6 +36,7 @@ import Control.Monad.Extra (ifM)
 import Control.Monad ((>=>))
 import Data.Either (fromRight)
 import Control.Monad (void)
+import GHC.Integer (leInteger)
 
 
 
@@ -282,6 +283,7 @@ runEval (EBinOp p op e1 e2) = do
 continue ::  Interp (Either (Val SourcePos) ())
 continue = return $ Right ()
 
+
 interpStatement :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
 interpStatement (Return p Nothing)  = return $ Left (VNil p)
 interpStatement (Return p (Just e)) = Left <$> runEval e
@@ -290,35 +292,12 @@ interpStatement (Print p e) =
 interpStatement (ExpSt p e) = 
   runEval e >> continue
 interpStatement (VarDecl p id' e) = do
-  guardCirularInit id' e
-  guardRedeclaration id'
   v <- maybe (return $ VNil p) runEval e
   case v of
     (VClosure p funId args body env) ->
       defineVariable id' (VClosure p id' args body env) >> continue
     _ ->
       defineVariable id' v >> continue
-  where
-    guardRedeclaration :: Ident -> Interp ()
-    guardRedeclaration id' =
-      ifM (gets $ E.existsInCurrentScope id')
-          (throwDeclErr p id' "Already a variable with this name in this scope")
-          (return ())
-      
-    guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
-    guardCirularInit l r = do
-      global <- amInGlobalScope 
-      ifM (not <$> amInGlobalScope)
-          (case r of
-            Just e -> 
-              if l `exprContains` e 
-                then throwDeclErr p id' "Can't read local variable in its own initializer" 
-                else return ()
-            Nothing -> return ())
-          (return ())
-      where
-        exprContains :: Ident -> Exp SourcePos -> Bool
-        exprContains id' ex = id' `elem` (expVars ex)
 interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = inLocalScope $ do
   pred' <- runEval pred
@@ -343,11 +322,40 @@ interpStatement (For p (init,pred,step) body) =
             ((maybe (return $ VNil p) runEval step) >> go)
       else continue
 interpStatement (FunDecl p funId args body) = do
-  guardArgNameConflict
-  guardDeclaration
   env <- get
   defineVariable funId (VClosure p funId args body env)
   continue
+
+lintStatemnts :: [Statement SourcePos] -> Interp ()
+lintStatemnts sts = mapM_ lintStatement sts >> put (E.emptyEnv)
+
+lintStatement :: Statement SourcePos -> ExceptT EvalError (StateT Env IO) ()
+lintStatement (VarDecl p id' e) = do
+  defineVariable id' (VNil p)
+  guardCirularInit id' e
+  guardRedeclaration id'
+  where
+    guardRedeclaration :: Ident -> Interp ()
+    guardRedeclaration id' =
+      ifM (gets $ E.existsInCurrentScope id')
+          (throwDeclErr p id' "Already a variable with this name in this scope")
+          (return ())
+    exprContains :: Ident -> Exp SourcePos -> Bool
+    exprContains id' ex = id' `elem` (expVars ex)
+    guardCirularInit :: Ident -> Maybe (Exp SourcePos) -> Interp ()
+    guardCirularInit l r = do
+      global <- amInGlobalScope 
+      ifM (not <$> amInGlobalScope)
+          (case r of
+            Just e -> 
+              if l `exprContains` e 
+                then throwDeclErr p id' "Can't read local variable in its own initializer" 
+                else return ()
+            Nothing -> return ())
+          (return ())
+lintStatement (FunDecl p funId args body) = do
+  guardArgNameConflict
+  guardDeclaration
   where
     funVarDecls :: Statement SourcePos -> [Ident]
     funVarDecls (VarDecl _ id' _) = [id']
@@ -366,7 +374,11 @@ interpStatement (FunDecl p funId args body) = do
         else return ()
       where
         conflicts = args `intersect` (funVarDecls body)
+lintStatement (Block p sts) = 
+  inLocalScope $ mapM_ lintStatement sts
+lintStatement _ = return ()
 
+  
 
 interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
 interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
@@ -383,12 +395,15 @@ eval exp =
     either 
       (\e -> hPutStrLn stderr (show e) >> exitWith (ExitFailure 70))
       (putStrLn . show)
+
+runInterp :: [Statement SourcePos] -> ExceptT EvalError (StateT Env IO) ()
+runInterp sts =  lintStatemnts sts  >> mapM_ interpStatement sts
       
 
 
 interp :: [Statement SourcePos] -> IO ()
-interp sts = 
-  (flip evalStateT E.emptyEnv . runExceptT $ mapM_ interpStatement sts) >>=
+interp sts = do
+  (flip evalStateT E.emptyEnv . runExceptT $ runInterp sts) >>=
     either 
       (\e -> hPutStrLn stderr (show e) >> exitOn e)
       return
