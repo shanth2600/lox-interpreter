@@ -145,7 +145,7 @@ data Val a =
   | VNil a
   | VClosure a Ident [Ident] (Statement a) Env
   | VClass a Ident
-  | VInstance a Ident
+  | VInstance a Ident Scope
   | VString a String
 
 truthy :: Val a -> Bool
@@ -170,19 +170,19 @@ valPos (VNil a)               = a
 valPos (VString a _)          = a
 valPos (VClosure a _ _ _ _)   = a
 valPos (VClass a _)           = a
-valPos (VInstance a _)        = a
+valPos (VInstance a _ _)      = a
 
 instance Show (Val a) where
   show :: Val a -> String
-  show (VNum _ n)       = displayNum $ showFFloat Nothing n ""
-  show (VBool _ True)   = "true"
-  show (VBool _ False)  = "false"
-  show (VNil _)         = "nil"
+  show (VNum _ n)         = displayNum $ showFFloat Nothing n ""
+  show (VBool _ True)     = "true"
+  show (VBool _ False)    = "false"
+  show (VNil _)           = "nil"
   show (VClosure _ funId _ body _) = printf "<fn %s>" funId
-  show (VString _ str)  = str
-  show (VFloat _ str)   = str
-  show (VClass _ id)    = id
-  show (VInstance _ id) = id ++ " instance"
+  show (VString _ str)    = str
+  show (VFloat _ str)     = str
+  show (VClass _ id)      = id
+  show (VInstance _ id _) = id ++ " instance"
 
 displayNum :: String -> String 
 displayNum nStr = case splitOn "." nStr of
@@ -198,11 +198,16 @@ displayNum nStr = case splitOn "." nStr of
 
 
 runEval :: Exp SourcePos -> Interp (Val SourcePos)
-runEval (EVar p id')        = lookupVar p id'
-runEval (ENil p)            = return $ VNil p
-runEval (ENum p n)          = return $ VNum p n
-runEval (EBool p b)         = return $ VBool p b
-runEval (EString p str)     = return $ VString p str
+runEval (EVar p id')         = lookupVar p id'
+runEval (EObjFld p obId fld) = do
+  (VInstance _ _ env) <- lookupVar p obId
+  case M.lookup fld env of
+    Nothing -> error $ "Object has no field: " ++ fld
+    Just v  -> return v
+runEval (ENil p)             = return $ VNil p
+runEval (ENum p n)           = return $ VNum p n
+runEval (EBool p b)          = return $ VBool p b
+runEval (EString p str)      = return $ VString p str
 runEval (EFunCall p (EVar _ "clock") []) = do
   t <- liftIO $ getPOSIXTime
   return (VNum p (realToFrac t))
@@ -219,7 +224,7 @@ runEval (EFunCall p fun args) = do
               interpStatement body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
-    (VClass _ clsId) -> return (VInstance p clsId)
+    (VClass _ clsId) -> return (VInstance p clsId E.emptyScope)
     _ -> throwFunErr p
   where
     withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
@@ -249,6 +254,10 @@ runEval (EBinOp p Assign l r) = do
   case l of
     EVar p id' -> do
       assignVariable id' r'
+      return r'
+    EObjFld p obId fld -> do
+      (VInstance p _ env) <- lookupVar p obId
+      assignVariable obId (VInstance p obId (M.insert fld r' env))
       return r'
     _ -> throwEvalErr p "variable"
   return r'

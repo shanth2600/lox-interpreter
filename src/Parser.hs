@@ -137,6 +137,7 @@ expr =
 binOperand :: Parser ExpS
 binOperand =
   try funCall <|>
+  try objFld  <|>
   try eNegExp <|>
   eBool       <|>
   eVar        <|>
@@ -222,7 +223,14 @@ assmtExp = do
   lhs' <- (lookAhead lhs)
   lhs `chainr1` (assmtBinOp (expPos lhs'))
     where
-    lhs = boolExp <|> (eVar <|> eNum)
+    lhs = boolExp <|> ((try objFld) <|> eVar <|> eNum)
+
+objFld :: Parser ExpS
+objFld = do
+  (EVar p objId) <- eVar
+  _ <- token' T.Dot
+  (EVar p fldId) <- eVar
+  return $ EObjFld p objId fldId 
 
 funCall :: Parser ExpS
 funCall = do

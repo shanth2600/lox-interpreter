@@ -76,6 +76,7 @@ data Exp n where
   EGroup   :: n -> Exp n -> Exp n
   EFunCall :: n -> Exp n -> [Exp n] -> Exp n
   EAssmt   :: n -> Ident -> Exp n -> Exp n
+  EObjFld  :: n -> Ident -> Ident -> Exp n
   ENil     :: n -> Exp n
   deriving (Functor)
 
@@ -99,6 +100,7 @@ expPos (EGroup   n _)    = n
 expPos (ENeg   n _)      = n
 expPos (ENot   n _)      = n
 expPos (ENil    n)       = n
+expPos (EObjFld n _ _)   = n
 
 instance Show (Exp a) where
   show :: Exp n -> String
@@ -113,6 +115,7 @@ instance Show (Exp a) where
   show (ENot _ e)            = printf "(! %s)" (show e)
   show (ENeg _ e)            = printf "(- %s)" (show e)
   show (ENil _ )             = "nil"
+  show (EObjFld _ ob fld)    = printf "%s.%s" ob fld
 
 
 displayNum :: Double -> String 
