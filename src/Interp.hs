@@ -14,7 +14,7 @@ import AST ( Exp (..), Op (..), Statement (..), expVars)
 import Text.Parsec (SourcePos)
 import Parser (testParse, testProgParse)
 import Data.List.Split (splitOn)
-import Data.List (dropWhileEnd, intercalate, intersect)
+import Data.List (dropWhileEnd, intercalate, intersect, group)
 import Text.Printf (printf)
 import Text.Parsec.Pos (sourceLine)
 import Control.Monad.Except (Except, runExcept, ExceptT (..), runExceptT)
@@ -29,7 +29,7 @@ import Control.Monad.State.Strict (StateT)
 import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.State.Strict (gets)
 import Debug.Trace (trace)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Control.Monad (when)
 import Data.Bifunctor (first, second, Bifunctor (bimap))
 import Control.Monad.Extra (ifM)
@@ -351,10 +351,17 @@ interpStatement (FunDecl p funId args body) = do
     funVarDecls :: Statement SourcePos -> [Ident]
     funVarDecls (VarDecl _ id' _) = [id']
     funVarDecls (Block n sts) = [ id' | (VarDecl _ id' _) <- sts]
+    guardArgNameConflict :: Interp ()
+    guardArgNameConflict = 
+      if (not . null) argConflicts
+        then throwDeclErr p (head argConflicts) "Already a variable with this name in this scope"
+        else return ()
+        where
+          argConflicts = concat $ catMaybes $ map tailMay (group args )
     guardDeclaration :: Interp ()
     guardDeclaration = 
       if (not . null) conflicts
-        then throwDeclErr p (head conflicts) "Can't read local variable in its own initializer"
+        then throwDeclErr p (head conflicts) "Already a variable with this name in this scope"
         else return ()
       where
         conflicts = args `intersect` (funVarDecls body)
