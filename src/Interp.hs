@@ -145,6 +145,7 @@ data Val a =
   | VNil a
   | VClosure a Ident [Ident] (Statement a) Env
   | VClass a Ident
+  | VInstance a Ident
   | VString a String
 
 truthy :: Val a -> Bool
@@ -158,6 +159,7 @@ instance Eq (Val a) where
   (VFloat _ f1)  == (VFloat _ f2)  = f1 == f2
   (VNil _)       == (VNil _)       = True
   (VString _ s1) == (VString _ s2) = s1 == s2
+  (VClass _ cId) == (VClass _ cId') = cId == cId'
   _ == _ = False
 
 valPos :: Val a -> a
@@ -167,17 +169,20 @@ valPos (VFloat a _)           = a
 valPos (VNil a)               = a
 valPos (VString a _)          = a
 valPos (VClosure a _ _ _ _)   = a
+valPos (VClass a _)           = a
+valPos (VInstance a _)        = a
 
 instance Show (Val a) where
   show :: Val a -> String
-  show (VNum _ n)      = displayNum $ showFFloat Nothing n ""
-  show (VBool _ True)  = "true"
-  show (VBool _ False) = "false"
-  show (VNil _)        = "nil"
+  show (VNum _ n)       = displayNum $ showFFloat Nothing n ""
+  show (VBool _ True)   = "true"
+  show (VBool _ False)  = "false"
+  show (VNil _)         = "nil"
   show (VClosure _ funId _ body _) = printf "<fn %s>" funId
-  show (VString _ str) = str
-  show (VFloat _ str)  = str
-  show (VClass _ id)   = id
+  show (VString _ str)  = str
+  show (VFloat _ str)   = str
+  show (VClass _ id)    = id
+  show (VInstance _ id) = "instance " ++ id
 
 displayNum :: String -> String 
 displayNum nStr = case splitOn "." nStr of
@@ -214,6 +219,7 @@ runEval (EFunCall p fun args) = do
               interpStatement body
       assignVariable funId  (VClosure p funId params body env')
       either return (const $ return (VNil p)) v
+    (VClass _ clsId) -> return (VInstance p clsId)
     _ -> throwFunErr p
   where
     withFunctionEnv :: Env -> Interp a -> Interp (a, Env)
