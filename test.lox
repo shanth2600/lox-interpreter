@@ -1,26 +1,14 @@
-fun makeLogger(prefix) {
-  var logCount = 0;
-
-  fun log(message) {
-    logCount = logCount + 1;
-    print prefix + ": " + message;
-
-    if (logCount > 2) {
-      print prefix + ": Too many log lines!";
-      logCount = 0;
-    }
+fun foo() {
+  if (true) {
+    return "early return";
   }
 
-  return log;
+  for (var i = 0; i < 10; i = i + 1) {
+    return "loop return";
+  }
 }
 
-var debugLog = makeLogger("quz");
-var errorLog = makeLogger("baz");
-
-debugLog("Starting");
-debugLog("Processing");
-debugLog("Finishing");
-debugLog("Extra line");
-
-errorLog("Failed!");
-errorLog("Retrying...");
+if (true) {
+  return "conditional return";
+  // expect compile error
+}

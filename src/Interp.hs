@@ -291,7 +291,7 @@ interpStatement (Return p mayE)  = do
   maybe (return $ Left (VNil p)) (fmap Left . runEval) mayE
   where
     guardReturnFromTopLevel :: Interp ()
-    guardReturnFromTopLevel = 
+    guardReturnFromTopLevel = do
       ifM (amInGlobalScope)
           (throwDeclErr p "return" " Can't return from top-level code")
           (return ())
@@ -310,8 +310,8 @@ interpStatement (Block _ sts) = inLocalScope $ interpStatements sts
 interpStatement (If p pred then' else') = do
   pred' <- runEval pred
   if (truthy pred') 
-    then interpStatement then' 
-    else (maybe continue interpStatement else')
+    then interpInCurrentScope then' 
+    else (maybe continue interpInCurrentScope else')
 interpStatement (While p pred body) = inLocalScope go
   where
     go = do
@@ -333,6 +333,16 @@ interpStatement (FunDecl p funId args body) = do
   env <- get
   defineVariable funId (VClosure p funId args body env)
   continue
+
+
+interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
+interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
+  
+
+interpInCurrentScope :: Statement SourcePos -> Interp (Either (Val SourcePos) ())
+interpInCurrentScope = \case
+  (Block _ sts) -> interpStatements sts
+  st            -> interpStatements [st]
 
 lintStatemnts :: [Statement SourcePos] -> Interp ()
 lintStatemnts sts = mapM_ lintStatement sts >> put (E.emptyEnv)
@@ -386,11 +396,6 @@ lintStatement (Block p sts) =
   inLocalScope $ mapM_ lintStatement sts
 lintStatement _ = return ()
 
-  
-
-interpStatements :: [Statement SourcePos] -> Interp (Either (Val SourcePos) ())
-interpStatements = runExceptT . mapM_ (ExceptT . interpStatement)
-  
   
 handleReturn :: Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ()) -> Interp (Either (Val SourcePos) ())
 handleReturn action cont = action >>= (either (return . Left) (const $ cont))
